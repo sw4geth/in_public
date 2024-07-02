@@ -209,7 +209,7 @@ function App() {
       className="hide-comments-button"
       onClick={() => setCommentsVisible(!commentsVisible)}
     >
-      {commentsVisible ? 'Hide Comments' : 'Show Comments'}
+      {commentsVisible ? 'Hide Comments -' : 'Show Comments +'}
     </button>
 
     <ConnectButton.Custom>
