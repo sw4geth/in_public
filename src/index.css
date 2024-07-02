@@ -1,0 +1,373 @@
+@font-face {
+  font-family: 'GT-Cinetype-Regular';
+  src: url('./GT-Cinetype-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  background-color: white;
+  color: black;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  width: 70%;
+  margin: 0 auto;
+  background-color: white;
+}
+
+.site-header {
+  display: flex;
+  width: 100%;
+  margin-bottom: 20px;
+  justify-contents: center;
+}
+
+.site-header img {
+  display: flex;
+  width: 20%;
+  height: auto;
+  display:inline-block;
+  margin: 0 auto;
+}
+
+.token-card {
+  width: 100%;
+  margin-bottom: 40px;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+.token-title {
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.block-number {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+.media-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 60px;
+  text-align: left;
+}
+
+.image-container img,
+.video-container video {
+  max-width: 100%;
+  height: auto;
+}
+
+.audio-container {
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+  text-align: left;
+}
+
+.audio-image-container {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.audio-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audio-player-container {
+}
+
+.audio-title {
+  font-size: 18px;
+}
+
+.audio-player {
+  width: 100%;
+}
+
+.audio-player::-webkit-media-controls-panel {
+  border-radius: 0;
+}
+
+.audio-player::-webkit-media-controls-enclosure {
+  border-radius: 0;
+}
+.pdf-navigation{
+  display:flex;
+  justify-content: center;
+}
+
+.pdf-button{
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: none;
+  margin: auto;
+  cursor: pointer;
+}
+.comment-section {
+  position: relative;
+  margin-top: 100px;
+  padding-top: 20px;
+}
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.comments-header button,
+.comments-header select {
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.comment-list {
+  list-style: none;
+  padding: 0;
+}
+
+.comment-item {
+  margin-bottom: 30px;
+  display: flex;
+}
+
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.comment-content {
+  flex-grow: 1;
+}
+
+.comment-address {
+  font-weight: bold;
+}
+
+.comment-text {
+  margin: 20px 0;
+}
+
+.comment-input-container {
+  position: relative;
+  margin-bottom: 20px;
+  transition: margin 0.3s ease;
+}
+
+.comment-input {
+  width: 100%;
+  height: 200px;
+  padding: 10px;
+  padding-right: 40px;
+  box-sizing: border-box;
+  border: 1px solid black;
+  border-radius: 0px;
+  resize: vertical;
+  font-family: 'Roboto', sans-serif;
+  transition: height 0.3s ease, padding 0.3s ease, border 0.3s ease;
+}
+
+.comment-input-collapsed {
+  height: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+}
+
+.toggle-comment-input {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 2;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.comment-input-container.collapsed {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.collapsed-add-comment {
+  border: none;
+  margin-left: auto;
+  text-align: left;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.comment-bar {
+  justify-content: space-between;
+}
+
+.mint-quantity-selector {
+  display: flex;
+  align-items: center;
+  margin-right: 0px;
+}
+
+.hide-comments-button {
+  height: 30px;
+  display: block;
+  padding: 5px 10px;
+  color: white;
+  background-color: gray;
+  border: none;
+  border-radius: 0px;
+  cursor: pointer;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.quantity-display {
+  color: white;
+  width: 35px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 0px;
+  margin-right: 5px;
+  background-color: black;
+  font-size: 16px;
+  cursor: default;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.quantity-controls {
+  display: flex;
+  flex-direction: column;
+}
+
+.quantity-button {
+  width: 30px;
+  height: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.quantity-button.increment {
+  border-radius: 2px;
+  border-bottom: none;
+}
+
+.quantity-button.decrement {
+  border-radius: 2px;
+  margin-top: 1.5px;
+}
+
+.mint-quantity-selector input,
+.mint-quantity-selector [type="number"] {
+  display: none !important;
+}
+
+.comment-button {
+  margin-left: auto;
+  height: 30px;
+  margin-right: 5px;
+  padding: 10px 20px;
+  background-color: #000;
+  color: #fff;
+  border: none;
+  border-radius: 0px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.comment-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.comment-sort {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  z-index: 1;
+}
+
+.comment-sort select {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: white;
+  border-radius: 0px;
+  background-color: black;
+  cursor: pointer;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+}
+
+.comment-sort select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.comment-sort select:hover {
+  background-color: #f8f8f8;
+}
+
+.comment-input-container {
+  margin-top: 40px;
+}
+
+.text-container {
+  white-space: pre-wrap;
+  max-width: 100%;
+  overflow: auto;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    background-color: #f8f8f8;
+    color: #181818;
+  }
+}
