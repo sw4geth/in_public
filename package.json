@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://sw4geth.github.io/in_public",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -36,8 +37,5 @@
     "buffer": "^6.0.3",
     "typescript": "^5.4.5",
     "vite": "^5.2.11"
-  },
-  {
-  "homepage": "https://sw4geth.github.io/in_public",
-}
+  }
 }
