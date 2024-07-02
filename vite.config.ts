@@ -38,5 +38,5 @@ export default defineConfig({
     'process.env': {},
     global: 'window',
   },
-  publicDir: 'src', // This will treat the 'src' directory as the public directory
+  publicDir: 'src',
 });
