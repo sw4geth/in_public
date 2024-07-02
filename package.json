@@ -10,7 +10,7 @@
     "lint": "biome check .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "vite build --force && gh-pages -d dist"
+    "deploy": "CI=false npm run build && gh-pages -d dist"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.1.2",
