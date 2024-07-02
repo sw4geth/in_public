@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "biome check .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.1.2",
@@ -34,5 +36,8 @@
     "buffer": "^6.0.3",
     "typescript": "^5.4.5",
     "vite": "^5.2.11"
-  }
+  },
+  {
+  "homepage": "https://sw4geth.github.io/in_public",
+}
 }
