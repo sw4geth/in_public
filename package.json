@@ -5,12 +5,8 @@
   "type": "module",
   "homepage": "https://sw4geth.github.io/in_public",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "lint": "biome check .",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "CI=false npm run build && gh-pages -d dist"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.1.2",
