@@ -259,6 +259,7 @@
 }
 
 .quantity-display {
+  background-color: #444444;
   color: white;
   width: 35px;
   height: 30px;
@@ -267,7 +268,6 @@
   align-items: center;
   border-radius: 0px;
   margin-right: 5px;
-  background-color: black;
   font-size: 16px;
   cursor: default;
   font-family: 'GT-Cinetype-Regular', sans-serif;
@@ -295,11 +295,14 @@
 .quantity-button.increment {
   border-radius: 2px;
   border-bottom: none;
+  background-color: #444444;
+  color: white;
 }
 
 .quantity-button.decrement {
   border-radius: 2px;
   margin-top: 1.5px;
+  background-color: #8D8D8D;
 }
 
 .mint-quantity-selector input,
@@ -340,18 +343,18 @@
   font-size: 14px;
   color: white;
   border-radius: 0px;
-  background-color: black;
+  boder: none;
+  background-color: #5C5C5C;
   cursor: pointer;
   font-family: 'GT-Cinetype-Regular', sans-serif;
 }
 
 .comment-sort select:focus {
   outline: none;
-  border-color: #007bff;
 }
 
 .comment-sort select:hover {
-  background-color: #f8f8f8;
+  background-color: #8D8D8D;
 }
 
 .comment-input-container {

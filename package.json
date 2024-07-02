@@ -6,7 +6,8 @@
   "homepage": "https://sw4geth.github.io/in_public",
   "scripts": {
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev": "vite"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.1.2",
@@ -14,6 +15,7 @@
     "@react-three/fiber": "^8.16.8",
     "@tanstack/react-query": "5.0.5",
     "@zoralabs/protocol-sdk": "^0.7.1",
+    "axios": "^1.7.2",
     "gh-pages": "^6.1.1",
     "lottie-web": "^5.12.2",
     "pdfjs-dist": "^4.3.136",
@@ -32,7 +34,7 @@
     "@wagmi/cli": "latest",
     "buffer": "^6.0.3",
     "typescript": "^5.4.5",
-    "vite": "^5.2.11"
+    "vite": "^5.3.2"
   },
   "compilerOptions": {
     "strict": false,

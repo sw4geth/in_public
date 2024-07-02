@@ -38,5 +38,14 @@ export default defineConfig({
     'process.env': {},
     global: 'window',
   },
+  server: {
+    proxy: {
+      '/api/users': {
+        target: 'https://zora.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  },
   publicDir: 'src',
 });
