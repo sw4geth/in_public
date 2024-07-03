@@ -32,14 +32,14 @@
   display: flex;
   width: 100%;
   margin-bottom: 20px;
-  justify-contents: center;
+  justify-content: center;
 }
 
 .site-header img {
   display: flex;
   width: 30%;
   height: auto;
-  display:inline-block;
+  display: inline-block;
   margin: 0 auto;
 }
 
@@ -110,12 +110,13 @@
 .audio-player::-webkit-media-controls-enclosure {
   border-radius: 0;
 }
-.pdf-navigation{
-  display:flex;
+
+.pdf-navigation {
+  display: flex;
   justify-content: center;
 }
 
-.pdf-button{
+.pdf-button {
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -123,6 +124,7 @@
   margin: auto;
   cursor: pointer;
 }
+
 .comment-section {
   position: relative;
   margin-top: 100px;
@@ -179,7 +181,7 @@
 .comment-input-container {
   position: relative;
   margin-bottom: 20px;
-  transition: margin 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .comment-input {
@@ -192,10 +194,10 @@
   border-radius: 0px;
   resize: vertical;
   font-family: 'Roboto', sans-serif;
-  transition: height 0.3s ease, padding 0.3s ease, border 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-.comment-input-collapsed {
+.comment-input-container.collapsed .comment-input {
   height: 0;
   padding: 0;
   border: none;
@@ -214,17 +216,26 @@
   font-family: 'GT-Cinetype-Regular', sans-serif;
 }
 
+.comment-input-container.collapsed {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0;
+}
+
+.comment-input-container.collapsed .toggle-comment-input {
+  position: static;
+  display: block;
+  width: auto;
+  text-align: right;
+  font-size: 16px;
+  padding: 10px 0;
+}
+
 .comment-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 10px;
-}
-
-.comment-input-container.collapsed {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0;
 }
 
 .collapsed-add-comment {
@@ -344,7 +355,7 @@
   font-size: 14px;
   color: white;
   border-radius: 0px;
-  boder: none;
+  border: none;
   background-color: #5C5C5C;
   cursor: pointer;
   font-family: 'GT-Cinetype-Regular', sans-serif;

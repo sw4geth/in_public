@@ -98,7 +98,7 @@ function App() {
         prevTokens.map(token => {
           if (token.tokenId === tokenIdBeingMinted) {
             console.log('Updating token:', token.tokenId);
-            const newCommentsList = Array(1).fill(null).map(() => ({
+            const newCommentsList = Array(mintQuantity).fill(null).map(() => ({
               fromAddress: address,
               comment: newComments[token.tokenId],
               blockNumber: Date.now()
@@ -115,7 +115,7 @@ function App() {
       setMinting(prev => ({ ...prev, [tokenIdBeingMinted]: false }));
       setTokenIdBeingMinted(null);
       setMintQuantity(1);
-      setIsSuccess(false); // Reset success state
+      setIsSuccess(false);
     }
 
     return () => {
@@ -223,7 +223,7 @@ function App() {
                   </ul>
                 )}
 
-                <div className="comment-input-container">
+                <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
                   <button
                     className="toggle-comment-input"
                     onClick={() => setCommentInputVisible(!commentInputVisible)}
