@@ -187,6 +187,9 @@ function App() {
     <WagmiConfig config={config}>
       <RainbowKitProvider chains={chains}>
         <div className="App">
+        <header className="site-header">
+        <img src="./INPUBLIC.png" alt="Site Header" />
+        </header>
           {tokens.map(token => (
             <div key={token.tokenId} className="token-card">
               <h2 className="token-title">{token.metadata.name}</h2>
