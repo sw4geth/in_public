@@ -27,13 +27,14 @@ function App() {
   const [sortOrder, setSortOrder] = useState('newest');
   const [mintQuantity, setMintQuantity] = useState(1);
   const [tokenIdBeingMinted, setTokenIdBeingMinted] = useState(null);
+  const [transactionHash, setTransactionHash] = useState<`0x${string}` | null>(null);
 
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending, isError: isWriteError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: transactionHash,
   });
 
   const collectorClient = useMemo(() => {
@@ -47,8 +48,11 @@ function App() {
     lottie.loadAnimation({
       container: document.querySelector("#loader"),
       animationData: loader,
-
     });
+  }, []);
+
+
+  useEffect(() => {
     const getData = async () => {
       try {
         const tokenData = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY);
@@ -65,36 +69,31 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isConfirmed) {
+    if (isSuccess && transactionHash) {
       alert(`Comment minted successfully!`);
       setTokens(prevTokens =>
         prevTokens.map(token => {
           if (token.tokenId === tokenIdBeingMinted) {
+            const newCommentsList = Array(mintQuantity).fill(null).map(() => ({
+              fromAddress: address,
+              comment: newComments[token.tokenId],
+              blockNumber: Date.now()
+            }));
             return {
               ...token,
-              comments: [
-                ...token.comments,
-                {
-                  fromAddress: address,
-                  comment: newComments[token.tokenId],
-                  blockNumber: Date.now()
-                }
-              ]
+              comments: [...token.comments, ...newCommentsList]
             };
           }
           return token;
         })
       );
       setNewComments(prev => ({ ...prev, [tokenIdBeingMinted]: "" }));
+      setMinting(prev => ({ ...prev, [tokenIdBeingMinted]: false }));
       setTokenIdBeingMinted(null);
+      setTransactionHash(null);
+      setMintQuantity(1);
     }
-  }, [isConfirmed, address, tokenIdBeingMinted, newComments]);
-
-  const sortComments = (comments) => {
-    return [...comments].sort((a, b) => {
-      return sortOrder === 'newest' ? b.blockNumber - a.blockNumber : a.blockNumber - b.blockNumber;
-    });
-  };
+  }, [isSuccess, transactionHash, address, tokenIdBeingMinted, newComments, mintQuantity]);
 
   const handleMint = async (tokenId) => {
     if (!isConnected || !collectorClient) {
@@ -112,14 +111,17 @@ function App() {
         tokenId: BigInt(tokenId)
       });
 
-      const { parameters, costs } = prepareMint({
+      const { parameters } = prepareMint({
         minterAccount: address,
         quantityToMint: BigInt(mintQuantity),
         mintComment: newComments[tokenId] || "",
         mintReferral: "0x0E38A4b9B58AbD2f4c9B2D5486ba047a47606781"
       });
 
-      await writeContract(parameters);
+      const result = await writeContract(parameters);
+      if (result) {
+        setTransactionHash(result);
+      }
     } catch (error) {
       console.error("Error in minting process:", error);
       alert(`Error minting comment for token ${tokenId}: ${error.message}`);
@@ -128,123 +130,109 @@ function App() {
     }
   };
 
+  const sortComments = (comments) => {
+    return [...comments].sort((a, b) => {
+      return sortOrder === 'newest' ? b.blockNumber - a.blockNumber : a.blockNumber - b.blockNumber;
+    });
+  };
+
   if (loading) return <div id="loader"></div>;
   if (error) return <div>Error: {error}</div>;
-
-  const getTokenTitle = (token) => {
-    if (token.metadata && token.metadata.name) {
-      return token.metadata.name;
-    }
-    return `Token #${token.tokenId}`;
-  };
 
   return (
     <WagmiConfig config={config}>
       <RainbowKitProvider chains={chains}>
         <div className="App">
-
-        <header className="site-header">
-        <img src="./INPUBLIC.png" alt="Site Header" />
-        </header>
-
           {tokens.map(token => (
             <div key={token.tokenId} className="token-card">
               <h2 className="token-title">{token.metadata.name}</h2>
               <div className="block-number">Block: {token.blockNumber}</div>
               <MediaRenderer mediaType={token.mediaType} url={token.mediaURL} imageUrl={token.imageURL} />
 
-
-
               <div className="comment-section">
-  {commentsVisible && (
-    <div className="comment-sort">
-      <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-        <option value="newest">Sort: Newest</option>
-        <option value="oldest">Sort: Oldest</option>
-      </select>
-    </div>
-  )}
-  {commentsVisible && (
-    <ul className="comment-list">
-      {sortComments(token.comments).map((comment, index) => (
-        <li key={index} className="comment-item">
-          <div
-            className="comment-avatar"
-            style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
-          ></div>
-          <div className="comment-content">
-            <span className="comment-address">{comment.fromAddress}</span>
-            <p className="comment-text">{comment.comment}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  )}
+                {commentsVisible && (
+                  <div className="comment-sort">
+                    <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                      <option value="newest">Sort: Newest</option>
+                      <option value="oldest">Sort: Oldest</option>
+                    </select>
+                  </div>
+                )}
 
-  <div className={`comment-input-container ${!commentInputVisible ? 'collapsed' : ''}`}>
-    {commentInputVisible ? (
-      <>
-        <textarea
-          className="comment-input"
-          placeholder="Type Something"
-          value={newComments[token.tokenId] || ""}
-          onChange={(e) => setNewComments(prev => ({ ...prev, [token.tokenId]: e.target.value }))}
-        />
-        <button
-          className="toggle-comment-input"
-          onClick={() => setCommentInputVisible(false)}
-        >
-          ×
-        </button>
-      </>
-    ) : (
-      <div className="collapsed-add-comment" onClick={() => setCommentInputVisible(true)} >
-          Add comment +
-      </div>
-    )}
-  </div>
+                {commentsVisible && (
+                  <ul className="comment-list">
+                    {sortComments(token.comments).map((comment, index) => (
+                      <li key={index} className="comment-item">
+                        <div
+                          className="comment-avatar"
+                          style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
+                        ></div>
+                        <div className="comment-content">
+                          <span className="comment-address">{comment.fromAddress}</span>
+                          <p className="comment-text">{comment.comment}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-  <div className="comment-actions">
-    <button
-      className="hide-comments-button"
-      onClick={() => setCommentsVisible(!commentsVisible)}
+                <div className="comment-input-container">
+                  <button
+                    className="toggle-comment-input"
+                    onClick={() => setCommentInputVisible(!commentInputVisible)}
+                  >
+                    {commentInputVisible ? '×' : 'Add comment +'}
+                  </button>
+                  {commentInputVisible && (
+                    <textarea
+                      className="comment-input"
+                      placeholder="Type Something"
+                      value={newComments[token.tokenId] || ""}
+                      onChange={(e) => setNewComments(prev => ({ ...prev, [token.tokenId]: e.target.value }))}
+                    />
+                  )}
+                </div>
+
+                <div className="comment-actions">
+                  <button
+                    className="hide-comments-button"
+                    onClick={() => setCommentsVisible(!commentsVisible)}
+                  >
+                    {commentsVisible ? 'Hide Comments' : 'Show Comments'}
+                  </button>
+
+                  <ConnectButton.Custom>
+                    {({ openConnectModal }) => (
+                      <button
+      className="comment-button"
+      onClick={() => isConnected ? handleMint(token.tokenId) : openConnectModal()}
+      disabled={minting[token.tokenId] || isPending || isConfirming}
     >
-      {commentsVisible ? 'Hide Comments -' : 'Show Comments +'}
+      {!isConnected ? "Connect Wallet" :
+       minting[token.tokenId] || isPending ? "Minting..." :
+       isConfirming ? "Confirming..." : "Mint Comment"}
     </button>
+                    )}
+                  </ConnectButton.Custom>
 
-    <ConnectButton.Custom>
-    {({ openConnectModal }) => (
-      <button
-        className="comment-button"
-        onClick={() => isConnected ? handleMint(token.tokenId) : openConnectModal()}
-        disabled={minting[token.tokenId] || isPending || isConfirming}
-      >
-        {!isConnected ? (commentInputVisible ? "Comment" : "Mint") :
-         minting[token.tokenId] || isPending ? "Minting..." :
-         isConfirming ? "Confirming..." : (commentInputVisible ? "Comment" : "Mint")}
-      </button>
-    )}
-  </ConnectButton.Custom>
-
-    <div className="mint-quantity-selector">
-      <div className="quantity-display">{mintQuantity}x</div>
-      <div className="quantity-controls">
-        <button
-          className="quantity-button increment"
-          onClick={() => setMintQuantity(prev => Math.min(prev + 1, 99999))}
-        >
-          +
-        </button>
-        <button
-          className="quantity-button decrement"
-          onClick={() => setMintQuantity(prev => Math.max(prev - 1, 1))}
-        >
-          -
-        </button>
-      </div>
-    </div>
-  </div>
-
+                  <div className="mint-quantity-selector">
+                    <div className="quantity-display">{mintQuantity}x</div>
+                    <div className="quantity-controls">
+                      <button
+                        className="quantity-button increment"
+                        onClick={() => setMintQuantity(prev => Math.min(prev + 1, 99999))}
+                      >
+                        +
+                      </button>
+                      <button
+                        className="quantity-button decrement"
+                        onClick={() => setMintQuantity(prev => Math.max(prev - 1, 1))}
+                      >
+                        -
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
