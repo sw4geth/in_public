@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useChainId, usePublicClient, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useChainId, usePublicClient, useAccount, useWriteContract } from 'wagmi';
 import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
 import { createCollectorClient } from "@zoralabs/protocol-sdk";
 import { WagmiConfig } from 'wagmi';
@@ -27,15 +27,15 @@ function App() {
   const [sortOrder, setSortOrder] = useState('newest');
   const [mintQuantity, setMintQuantity] = useState(1);
   const [tokenIdBeingMinted, setTokenIdBeingMinted] = useState(null);
-  const [transactionHash, setTransactionHash] = useState<`0x${string}` | null>(null);
+  const alertShownRef = useRef(false);
 
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending, isError: isWriteError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: transactionHash,
-  });
+
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const collectorClient = useMemo(() => {
     if (chainId && publicClient) {
@@ -50,7 +50,6 @@ function App() {
       animationData: loader,
     });
   }, []);
-
 
   useEffect(() => {
     const getData = async () => {
@@ -69,12 +68,37 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isSuccess && transactionHash) {
+    if (hash) {
+      setIsConfirming(true);
+      const checkTransaction = async () => {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+          setIsConfirming(false);
+          setIsSuccess(true);
+        } catch (error) {
+          console.error("Transaction failed:", error);
+          setIsConfirming(false);
+        }
+      };
+      checkTransaction();
+    }
+  }, [hash, publicClient]);
+
+  useEffect(() => {
+    console.log('Transaction hash:', hash);
+    console.log('Is pending:', isPending);
+    console.log('Is confirming:', isConfirming);
+    console.log('Is success:', isSuccess);
+
+    if (isSuccess && hash && !alertShownRef.current) {
+      console.log('Minting successful, updating state');
       alert(`Comment minted successfully!`);
+      alertShownRef.current = true;
       setTokens(prevTokens =>
         prevTokens.map(token => {
           if (token.tokenId === tokenIdBeingMinted) {
-            const newCommentsList = Array(mintQuantity).fill(null).map(() => ({
+            console.log('Updating token:', token.tokenId);
+            const newCommentsList = Array(1).fill(null).map(() => ({
               fromAddress: address,
               comment: newComments[token.tokenId],
               blockNumber: Date.now()
@@ -90,10 +114,32 @@ function App() {
       setNewComments(prev => ({ ...prev, [tokenIdBeingMinted]: "" }));
       setMinting(prev => ({ ...prev, [tokenIdBeingMinted]: false }));
       setTokenIdBeingMinted(null);
-      setTransactionHash(null);
       setMintQuantity(1);
+      setIsSuccess(false); // Reset success state
     }
-  }, [isSuccess, transactionHash, address, tokenIdBeingMinted, newComments, mintQuantity]);
+
+    return () => {
+      if (isSuccess) {
+        alertShownRef.current = false;
+      }
+    };
+  }, [isSuccess, hash, address, tokenIdBeingMinted, newComments, mintQuantity]);
+
+  useEffect(() => {
+    if (isWriteError) {
+      setMinting({});
+      setTokenIdBeingMinted(null);
+      setIsConfirming(false);
+      setIsSuccess(false);
+      alert('Transaction was rejected or failed. Please try again.');
+    }
+  }, [isWriteError]);
+
+  const sortComments = (comments) => {
+    return [...comments].sort((a, b) => {
+      return sortOrder === 'newest' ? b.blockNumber - a.blockNumber : a.blockNumber - b.blockNumber;
+    });
+  };
 
   const handleMint = async (tokenId) => {
     if (!isConnected || !collectorClient) {
@@ -101,8 +147,12 @@ function App() {
       return;
     }
 
+    console.log('Starting minting process for token:', tokenId);
     setMinting(prev => ({ ...prev, [tokenId]: true }));
     setTokenIdBeingMinted(tokenId);
+    setIsConfirming(false);
+    setIsSuccess(false);
+    alertShownRef.current = false;
 
     try {
       const { prepareMint } = await collectorClient.getToken({
@@ -118,22 +168,16 @@ function App() {
         mintReferral: "0x0E38A4b9B58AbD2f4c9B2D5486ba047a47606781"
       });
 
-      const result = await writeContract(parameters);
-      if (result) {
-        setTransactionHash(result);
-      }
+      console.log('Prepared mint parameters:', parameters);
+      await writeContract(parameters);
     } catch (error) {
       console.error("Error in minting process:", error);
       alert(`Error minting comment for token ${tokenId}: ${error.message}`);
       setMinting(prev => ({ ...prev, [tokenId]: false }));
       setTokenIdBeingMinted(null);
+      setIsConfirming(false);
+      setIsSuccess(false);
     }
-  };
-
-  const sortComments = (comments) => {
-    return [...comments].sort((a, b) => {
-      return sortOrder === 'newest' ? b.blockNumber - a.blockNumber : a.blockNumber - b.blockNumber;
-    });
   };
 
   if (loading) return <div id="loader"></div>;
@@ -204,14 +248,15 @@ function App() {
                   <ConnectButton.Custom>
                     {({ openConnectModal }) => (
                       <button
-      className="comment-button"
-      onClick={() => isConnected ? handleMint(token.tokenId) : openConnectModal()}
-      disabled={minting[token.tokenId] || isPending || isConfirming}
-    >
-      {!isConnected ? "Connect Wallet" :
-       minting[token.tokenId] || isPending ? "Minting..." :
-       isConfirming ? "Confirming..." : "Mint Comment"}
-    </button>
+                        className="comment-button"
+                        onClick={() => isConnected ? handleMint(token.tokenId) : openConnectModal()}
+                        disabled={minting[token.tokenId] || isPending || isConfirming}
+                      >
+                        {!isConnected ? "Connect Wallet" :
+                         isPending ? "Waiting for Approval..." :
+                         isConfirming ? "Confirming..." :
+                         minting[token.tokenId] ? "Minting..." : "Comment"}
+                      </button>
                     )}
                   </ConnectButton.Custom>
 
