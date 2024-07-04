@@ -38,14 +38,16 @@ export default defineConfig({
     'process.env': {},
     global: 'window',
   },
+
   server: {
     proxy: {
-      '/api/users': {
+      '/api': {
         target: 'https://zora.co',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,  // This might help with some SSL-related issues
+      },
+    },
   },
   publicDir: 'src',
 });

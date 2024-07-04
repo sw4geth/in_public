@@ -12,11 +12,13 @@ import { fetchTokenData } from './api';
 import lottie from "lottie-web";
 import loader from './loader.json';
 
+
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 
 function App() {
   const API_ENDPOINT = "https://api.zora.co/graphql/";
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
+  const [usernames, setUsernames] = useState({});
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,12 +39,16 @@ function App() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+
+
   const collectorClient = useMemo(() => {
     if (chainId && publicClient) {
       return createCollectorClient({ chainId, publicClient });
     }
     return null;
   }, [chainId, publicClient]);
+
+
 
   useEffect(() => {
     lottie.loadAnimation({
@@ -190,7 +196,8 @@ function App() {
         <header className="site-header">
         <img src="./INPUBLIC.png" alt="Site Header" />
         </header>
-          {tokens.map(token => (
+
+          {tokens.slice().reverse().map(token => (
             <div key={token.tokenId} className="token-card">
               <h2 className="token-title">{token.metadata.name}</h2>
               <div className="block-number">Block: {token.blockNumber}</div>
