@@ -11,6 +11,8 @@ import { getColorFromAddress } from './utils';
 import { fetchTokenData } from './api';
 import lottie from "lottie-web";
 import loader from './loader.json';
+import ReactMarkdown from 'react-markdown';
+
 
 
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
@@ -225,7 +227,7 @@ function App() {
                         <span className="comment-address" title={comment.fromAddress}>
                         {comment.fromAddress.slice(0, 16)}...
                         </span>
-                          <p className="comment-text">{comment.comment}</p>
+                          <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
                         </div>
                       </li>
                     ))}
