@@ -363,7 +363,17 @@
 
 .text-container {
   font-family: 'GT-Cinetype-Regular', sans-serif;
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
 }
+.text-container iframe {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+
 .text-container img,
 .text-container video {
   max-width: 100%;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { pdfjs } from 'react-pdf';
 import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
-import PDFViewer from './PDFViewer';  // Import the PDFViewer component
+import PDFViewer from './PDFViewer';
 import { GLTF } from 'three-stdlib';
 import ReactMarkdown from 'react-markdown';
 
@@ -22,10 +22,10 @@ type GLTFResult = GLTF & {
 }
 
 const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl }) => {
-  const [textContent, setTextContent] = useState<string>('');
+  const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMarkdown, setIsMarkdown] = useState<boolean>(false);
+  const [isHTML, setIsHTML] = useState<boolean>(false);
 
   useEffect(() => {
     if (!url) {
@@ -44,13 +44,12 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
           return response.text();
         })
         .then(text => {
-          setTextContent(text);
-          // Check if the content is likely Markdown
-          setIsMarkdown(text.includes('#') || text.includes('```') || text.includes('*') || text.includes('- '));
+          setContent(text);
+          setIsHTML(text.trim().toLowerCase().startsWith('<!doctype html>'));
           setLoading(false);
         })
         .catch(error => {
-          console.error('Error fetching text content:', error);
+          console.error('Error fetching content:', error);
           setError(error.message);
           setLoading(false);
         });
@@ -104,13 +103,22 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         </div>
       );
     case 'text':
-    return (
-      <div className="media-container text-container">
-        <ReactMarkdown>{textContent}</ReactMarkdown>
-      </div>
-    );
+      return (
+        <div className="media-container text-container">
+          {isHTML ? (
+            <iframe
+              srcDoc={content}
+              style={{ width: '100%', height: '500px', border: 'none' }}
+              sandbox="allow-scripts"
+              title="HTML Content"
+            />
+          ) : (
+            <ReactMarkdown>{content}</ReactMarkdown>
+          )}
+        </div>
+      );
     case 'pdf':
-      return <PDFViewer url={url} options={options} />;  // Use the PDFViewer component
+      return <PDFViewer url={url} options={options} />;
     case 'gltf':
       return (
         <div className="media-container gltf-container">
