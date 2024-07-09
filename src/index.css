@@ -36,7 +36,6 @@
 }
 
 .site-header img {
-  display: flex;
   width: 30%;
   height: auto;
   display: inline-block;
@@ -89,9 +88,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.audio-player-container {
 }
 
 .audio-title {
@@ -367,7 +363,6 @@
 
 /* PDF Viewer Styles */
 .pdf-viewer {
-
   font-family: 'GT-Cinetype-Regular', sans-serif;
   width: 100%;
   height: 100%;
@@ -447,6 +442,105 @@
 /* Ensure the PDF page is scrollable in fullscreen mode */
 .fullscreen .pdf-document {
   height: calc(100vh - 80px); /* Subtract padding and controls height */
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .App {
+    width: 85%;
+  }
+}
+
+@media (max-width: 768px) {
+  .App {
+    width: 95%;
+    padding: 10px;
+  }
+
+  .site-header img {
+    width: 50%;
+  }
+
+  .token-card {
+    padding: 10px;
+  }
+
+  .audio-container {
+    height: auto;
+  }
+
+  .audio-image-container {
+    height: 200px;
+  }
+
+  .comments-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .comments-header button,
+  .comments-header select {
+    margin-top: 10px;
+  }
+
+  .comment-item {
+    flex-direction: column;
+  }
+
+  .comment-avatar {
+    margin-bottom: 10px;
+  }
+
+  .comment-input {
+    height: 150px;
+  }
+
+  .comment-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mint-quantity-selector {
+    margin-bottom: 10px;
+  }
+
+  .comment-button {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .comment-sort {
+    position: static;
+    margin-bottom: 10px;
+  }
+
+  .comment-sort select {
+    width: 100%;
+  }
+
+  /* PDF Viewer mobile styles */
+  .pdf-viewer {
+    padding: 10px;
+  }
+
+  .pdf-controls {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .pdf-button, .pdf-page-info, .pdf-fullscreen-button {
+    margin: 5px 0;
+  }
+
+  .pdf-page-info {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+
+  .fullscreen .pdf-document {
+    height: calc(100vh - 140px); /* Adjust for taller controls on mobile */
+  }
 }
 
 @media (prefers-color-scheme: light) {

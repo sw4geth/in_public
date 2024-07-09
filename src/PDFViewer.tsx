@@ -24,7 +24,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         const maxWidth = isFullscreen
           ? Math.min(containerWidth - 40, (containerHeight - 80) * aspectRatio)
           : containerWidth - 40;
-        setPageWidth(maxWidth);
+        setPageWidth(Math.max(maxWidth, 280)); // Ensure minimum width for readability
       }
     };
 
@@ -60,9 +60,34 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
     setIsFullscreen(!isFullscreen);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const diffX = touch.clientX - startX;
+      const diffY = touch.clientY - startY;
+
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 50) {
+          changePage(-1);
+        } else if (diffX < -50) {
+          changePage(1);
+        }
+      }
+    };
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+    }, { once: true });
+  };
+
   return (
     <div className={`pdf-viewer ${isFullscreen ? 'fullscreen' : ''}`} ref={containerRef}>
-      <div className="pdf-document">
+      <div className="pdf-document" onTouchStart={handleTouchStart}>
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -80,6 +105,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         </Document>
       </div>
       <div className="pdf-controls">
+        <span className="pdf-page-info">
+          Page {pageNumber} of {numPages || '--'}
+        </span>
         <button
           onClick={() => changePage(-1)}
           disabled={pageNumber <= 1}
@@ -87,9 +115,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         >
           Previous
         </button>
-        <span className="pdf-page-info">
-          Page {pageNumber} of {numPages || '--'}
-        </span>
         <button
           onClick={() => changePage(1)}
           disabled={pageNumber >= (numPages || 0)}
