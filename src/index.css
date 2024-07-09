@@ -63,15 +63,14 @@
 
 .media-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 100%;
   margin: 0 auto 60px;
   text-align: left;
 }
 
 .image-container img,
 .video-container video {
-  max-width: 100%;
-  height: auto;
+  width: 100%;
 }
 
 .audio-container {
@@ -109,20 +108,6 @@
 
 .audio-player::-webkit-media-controls-enclosure {
   border-radius: 0;
-}
-
-.pdf-navigation {
-  display: flex;
-  justify-content: center;
-}
-
-.pdf-button {
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  border: none;
-  margin: auto;
-  cursor: pointer;
 }
 
 .comment-section {
@@ -378,6 +363,90 @@
   max-width: 100%;
   overflow: auto;
   text-align: left;
+}
+
+/* PDF Viewer Styles */
+.pdf-viewer {
+
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.pdf-viewer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background-color: white;
+  padding: 20px;
+}
+
+.pdf-document {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.pdf-page {
+  display: flex;
+  justify-content: center;
+}
+
+.pdf-page.transitioning {
+  opacity: 0.5;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.pdf-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 40px;
+}
+
+.pdf-button {
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  background: none;
+  border: 1px solid black;
+  color: black;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 0 5px;
+}
+
+.pdf-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pdf-page-info {
+  margin: 0 10px;
+}
+
+.pdf-fullscreen-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* Ensure the PDF page is scrollable in fullscreen mode */
+.fullscreen .pdf-document {
+  height: calc(100vh - 80px); /* Subtract padding and controls height */
 }
 
 @media (prefers-color-scheme: light) {

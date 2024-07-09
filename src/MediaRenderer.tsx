@@ -1,18 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { pdfjs } from 'react-pdf';
 import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
+import PDFViewer from './PDFViewer.tsx';  // Import the PDFViewer component
+import { GLTF } from 'three-stdlib';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `pdf.worker.mjs`;
 
-const MediaRenderer = ({ mediaType, url, imageUrl }) => {
-  const [textContent, setTextContent] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageWidth, setPageWidth] = useState(400);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+type MediaType = 'image' | 'video' | 'audio' | 'text' | 'pdf' | 'gltf';
+
+interface MediaRendererProps {
+  mediaType: MediaType;
+  url: string;
+  imageUrl?: string;
+}
+
+type GLTFResult = GLTF & {
+  nodes: { [key: string]: THREE.Mesh }
+  materials: { [key: string]: THREE.Material }
+}
+
+const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl }) => {
+  const [textContent, setTextContent] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!url) {
@@ -44,37 +55,10 @@ const MediaRenderer = ({ mediaType, url, imageUrl }) => {
     }
   }, [mediaType, url]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      const maxWidth = Math.min(400, window.innerWidth - 40);
-      setPageWidth(maxWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize();
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const Model = ({ url }) => {
-    const { scene } = useGLTF(url);
+  const Model: React.FC<{ url: string }> = ({ url }) => {
+    const { scene } = useGLTF(url) as GLTFResult;
     return <primitive object={scene} />;
   };
-
-  function onDocumentLoadSuccess({ numPages }) {
-    setNumPages(numPages);
-    setPageNumber(1);
-  }
-
-  function changePage(offset) {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setPageNumber(prevPageNumber => {
-        const newPageNumber = prevPageNumber + offset;
-        return Math.max(1, Math.min(newPageNumber, numPages));
-      });
-      setIsTransitioning(false);
-    }, 300);
-  }
 
   const options = useMemo(() => ({
     cMapUrl: 'https://unpkg.com/pdfjs-dist@2.9.359/cmaps/',
@@ -118,38 +102,7 @@ const MediaRenderer = ({ mediaType, url, imageUrl }) => {
     case 'text':
       return <div className="media-container text-container">{textContent}</div>;
     case 'pdf':
-      return (
-        <div className="media-container pdf-container">
-          <div className="pdf-document">
-            <Document
-              file={url}
-              onLoadSuccess={onDocumentLoadSuccess}
-              options={options}
-            >
-              <div className={`pdf-page ${isTransitioning ? 'transitioning' : ''}`}>
-                <Page
-                  key={`page_${pageNumber}`}
-                  pageNumber={pageNumber}
-                  width={pageWidth}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
-              </div>
-            </Document>
-          </div>
-          <div className="pdf-navigation">
-            <button onClick={() => changePage(-1)} disabled={pageNumber <= 1} className="pdf-button">
-              {'<'}
-            </button>
-            <span className="pdf-page-info">
-              Page {pageNumber} of {numPages || '--'}
-            </span>
-            <button onClick={() => changePage(1)} disabled={pageNumber >= numPages} className="pdf-button">
-              {'>'}
-            </button>
-          </div>
-        </div>
-      );
+      return <PDFViewer url={url} options={options} />;  // Use the PDFViewer component
     case 'gltf':
       return (
         <div className="media-container gltf-container">
