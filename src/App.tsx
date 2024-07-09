@@ -225,7 +225,7 @@ function App() {
                         ></div>
                         <div className="comment-content">
                         <span className="comment-address" title={comment.fromAddress}>
-                        {comment.fromAddress.slice(0, 16)}...
+                        {comment.fromAddress.slice(0, 10)}
                         </span>
                           <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
                         </div>

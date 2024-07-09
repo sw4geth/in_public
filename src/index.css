@@ -422,6 +422,34 @@
   box-sizing: border-box;
 }
 
+.pdf-viewer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background-color: white;
+  padding: 0;
+}
+
+.pdf-document {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.fullscreen .pdf-document {
+  height: calc(100vh - 60px); /* Adjust for controls height */
+  margin-bottom: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
 .pdf-controls {
   display: flex;
   justify-content: center;
@@ -429,6 +457,16 @@
   width: 100%;
   height: 40px;
   position: relative;
+}
+
+.fullscreen .pdf-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  height: 60px;
 }
 
 .pdf-navigation {
@@ -440,7 +478,7 @@
 .pdf-button,
 .pdf-fullscreen-button {
   font-family: 'GT-Cinetype-Regular', sans-serif;
-  background: none;
+  background: white;
   border: 1px solid black;
   color: black;
   padding: 5px 10px;
@@ -463,7 +501,7 @@
 
 .pdf-fullscreen-button {
   position: absolute;
-  right: 0;
+  right: 10px;
 }
 
 .pdf-fullscreen-button svg {
@@ -477,10 +515,6 @@
   font-size: 16px;
 }
 
-/* Ensure the PDF page is scrollable in fullscreen mode */
-.fullscreen .pdf-document {
-  height: calc(100vh - 80px); /* Subtract padding and controls height */
-}
 
 /* Responsive styles for mobile devices */
 @media (max-width: 768px) {
@@ -554,19 +588,59 @@
   }
 
   /* Fullscreen mode adjustments */
-  .fullscreen .pdf-controls {
+  .pdf-viewer.fullscreen {
+    padding: 0;
     position: fixed;
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 5px;
-    padding: 5px;
-    z-index: 1000;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background-color: white;
   }
 
   .fullscreen .pdf-document {
-    height: calc(100vh - 50px);
+    height: calc(100vh - 60px);
+    padding: 10px;
+    box-sizing: border-box;
+    overflow: auto;
+  }
+
+  .fullscreen .pdf-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 5px 5px 0 0;
+    padding: 10px;
+    z-index: 1000;
+    height: 60px;
+  }
+
+  .fullscreen .pdf-navigation {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .fullscreen .pdf-button,
+  .fullscreen .pdf-fullscreen-button {
+    font-size: 14px;
+    height: 36px;
+    padding: 5px 10px;
+  }
+
+  .fullscreen .pdf-page-info {
+    font-size: 14px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .fullscreen .pdf-fullscreen-button {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
   }
 }
 
