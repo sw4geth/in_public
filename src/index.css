@@ -364,6 +364,11 @@
 .text-container {
   font-family: 'GT-Cinetype-Regular', sans-serif;
 }
+.text-container img,
+.text-container video {
+  max-width: 100%;
+  height: auto;
+}
 
 .text-container h1,
 .text-container h2,
