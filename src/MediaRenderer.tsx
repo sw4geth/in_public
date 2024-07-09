@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { pdfjs } from 'react-pdf';
 import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
-import PDFViewer from './PDFViewer.tsx';  // Import the PDFViewer component
+import PDFViewer from './PDFViewer';  // Import the PDFViewer component
 import { GLTF } from 'three-stdlib';
+import ReactMarkdown from 'react-markdown';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `pdf.worker.mjs`;
 
@@ -24,6 +25,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
   const [textContent, setTextContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMarkdown, setIsMarkdown] = useState<boolean>(false);
 
   useEffect(() => {
     if (!url) {
@@ -43,6 +45,8 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         })
         .then(text => {
           setTextContent(text);
+          // Check if the content is likely Markdown
+          setIsMarkdown(text.includes('#') || text.includes('```') || text.includes('*') || text.includes('- '));
           setLoading(false);
         })
         .catch(error => {
@@ -100,7 +104,11 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         </div>
       );
     case 'text':
-      return <div className="media-container text-container">{textContent}</div>;
+    return (
+      <div className="media-container text-container">
+        <ReactMarkdown>{textContent}</ReactMarkdown>
+      </div>
+    );
     case 'pdf':
       return <PDFViewer url={url} options={options} />;  // Use the PDFViewer component
     case 'gltf':
