@@ -105,9 +105,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         </Document>
       </div>
       <div className="pdf-controls">
-        <span className="pdf-page-info">
-          Page {pageNumber} of {numPages || '--'}
-        </span>
+
+
+
+
+
         <button
           onClick={() => changePage(-1)}
           disabled={pageNumber <= 1}
@@ -115,6 +117,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         >
           Previous
         </button>
+
+        <span className="pdf-page-info">
+          Page {pageNumber} of {numPages || '--'}
+        </span>
+
+
         <button
           onClick={() => changePage(1)}
           disabled={pageNumber >= (numPages || 0)}

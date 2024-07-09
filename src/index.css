@@ -302,7 +302,14 @@
 .mint-quantity-selector [type="number"] {
   display: none !important;
 }
+.comment-address {
+  font-weight: bold;
+  cursor: pointer;
+}
 
+.comment-address:hover {
+  text-decoration: underline;
+}
 .comment-button {
   margin-left: auto;
   height: 30px;
@@ -410,46 +417,23 @@
   box-sizing: border-box;
 }
 
-.pdf-viewer.fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  background-color: white;
-  padding: 20px;
-}
-
-.pdf-document {
-  width: 100%;
-  flex: 1;
-  overflow: auto;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.pdf-page {
-  display: flex;
-  justify-content: center;
-}
-
-.pdf-page.transitioning {
-  opacity: 0.5;
-  transition: opacity 0.3s ease-in-out;
-}
-
 .pdf-controls {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
   height: 40px;
+  position: relative;
 }
 
-.pdf-button {
+.pdf-navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pdf-button,
+.pdf-fullscreen-button {
   font-family: 'GT-Cinetype-Regular', sans-serif;
   background: none;
   border: 1px solid black;
@@ -457,6 +441,13 @@
   padding: 5px 10px;
   cursor: pointer;
   font-size: 16px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-button {
   margin: 0 5px;
 }
 
@@ -465,15 +456,20 @@
   cursor: not-allowed;
 }
 
-.pdf-page-info {
-  margin: 0 10px;
+.pdf-fullscreen-button {
+  position: absolute;
+  right: 0;
 }
 
-.pdf-fullscreen-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 5px;
+.pdf-fullscreen-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pdf-page-info {
+  margin: 0 10px;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  font-size: 16px;
 }
 
 /* Ensure the PDF page is scrollable in fullscreen mode */
@@ -481,102 +477,98 @@
   height: calc(100vh - 80px); /* Subtract padding and controls height */
 }
 
-/* Responsive styles */
-@media (max-width: 1024px) {
-  .App {
-    width: 85%;
-  }
-}
-
+/* Responsive styles for mobile devices */
 @media (max-width: 768px) {
+  /* General mobile adjustments */
   .App {
     width: 95%;
     padding: 10px;
   }
 
-  .site-header img {
-    width: 50%;
-  }
-
-  .token-card {
-    padding: 10px;
-  }
-
-  .audio-container {
-    height: auto;
-  }
-
-  .audio-image-container {
-    height: 200px;
-  }
-
-  .comments-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .comments-header button,
-  .comments-header select {
-    margin-top: 10px;
-  }
-
-  .comment-item {
-    flex-direction: column;
-  }
-
-  .comment-avatar {
-    margin-bottom: 10px;
-  }
-
-  .comment-input {
-    height: 150px;
-  }
-
-  .comment-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .mint-quantity-selector {
-    margin-bottom: 10px;
-  }
-
+  /* Button size adjustments */
+  .hide-comments-button,
+  .comment-sort select,
   .comment-button {
-    width: 100%;
-    margin-right: 0;
+    height: 36px;
+    font-size: 14px;
+    padding: 5px 10px;
   }
 
   .comment-sort {
-    position: static;
     margin-bottom: 10px;
   }
 
   .comment-sort select {
-    width: 100%;
+
   }
 
-  /* PDF Viewer mobile styles */
-  .pdf-viewer {
-    padding: 10px;
-  }
-
-  .pdf-controls {
-    flex-direction: column;
+  /* Markdown media size handling */
+  .text-container img,
+  .text-container video {
+    max-width: 100%;
     height: auto;
   }
 
-  .pdf-button, .pdf-page-info, .pdf-fullscreen-button {
-    margin: 5px 0;
+  /* PDF viewer adjustments */
+  .pdf-viewer {
+    padding: 5px;
+  }
+
+  .pdf-controls {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: auto;
+    padding: 5px 0;
+  }
+
+  .pdf-navigation {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .pdf-button,
+  .pdf-fullscreen-button {
+    font-size: 12px;
+    height: 30px;
+    padding: 2px 5px;
   }
 
   .pdf-page-info {
-    order: -1;
-    width: 100%;
-    text-align: center;
+    font-size: 12px;
+  }
+
+  .pdf-fullscreen-button {
+    position: static;
+    margin-left: 5px;
+  }
+
+  .pdf-fullscreen-button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Fullscreen mode adjustments */
+  .fullscreen .pdf-controls {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    padding: 5px;
+    z-index: 1000;
   }
 
   .fullscreen .pdf-document {
-    height: calc(100vh - 140px); /* Adjust for taller controls on mobile */
+    height: calc(100vh - 50px);
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .App {
+    width: 85%;
   }
 }
 

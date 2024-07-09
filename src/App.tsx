@@ -222,7 +222,9 @@ function App() {
                           style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
                         ></div>
                         <div className="comment-content">
-                          <span className="comment-address">{comment.fromAddress}</span>
+                        <span className="comment-address" title={comment.fromAddress}>
+                        {comment.fromAddress.slice(0, 16)}...
+                        </span>
                           <p className="comment-text">{comment.comment}</p>
                         </div>
                       </li>
