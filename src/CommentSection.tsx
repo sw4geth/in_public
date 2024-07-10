@@ -56,43 +56,45 @@ const CommentSection = ({
       )}
       {commentsVisible && (
         <ul className="comment-list">
-          {sortComments(token.comments).map((comment, index) => (
-            <li key={index} className="comment-item">
-              <div className="comment-avatar">
-                {userProfiles[comment.fromAddress]?.avatar ? (
-                  <img
-                    src={userProfiles[comment.fromAddress].avatar}
-                    alt="User avatar"
-                    className="user-avatar"
-                  />
-                ) : (
-                  <div
-                    className="default-avatar"
-                    style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
-                  ></div>
-                )}
-              </div>
-              <div className="comment-content">
-                <a
-                  href={`https://zora.co/${comment.fromAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="comment-address"
-                  title={comment.fromAddress}
-                >
-                  {USE_USERNAMES
-                    ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
-                    : truncateAddress(comment.fromAddress)
-                  }
-                </a>
-                <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
-                {comment.quantity > 1 && (
-                  <span className="comment-quantity">Minted: {comment.quantity}</span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+  {sortComments(token.comments).map((comment, index) => (
+    <li key={index} className="comment-item">
+      <div className="comment-avatar">
+        {userProfiles[comment.fromAddress]?.avatar ? (
+          <img
+            src={userProfiles[comment.fromAddress].avatar}
+            alt="User avatar"
+            className="user-avatar"
+          />
+        ) : (
+          <div
+            className="default-avatar"
+            style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
+          >
+            {comment.fromAddress.slice(2, 4)}
+          </div>
+        )}
+      </div>
+      <div className="comment-content">
+        <a
+          href={`https://zora.co/${comment.fromAddress}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="comment-address"
+          title={comment.fromAddress}
+        >
+          {USE_USERNAMES
+            ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
+            : truncateAddress(comment.fromAddress)
+          }
+        </a>
+        <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
+        {comment.quantity > 1 && (
+          <span className="comment-quantity">Minted: {comment.quantity}</span>
+        )}
+      </div>
+    </li>
+  ))}
+</ul>
       )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
