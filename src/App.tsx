@@ -217,6 +217,7 @@ function App() {
               setMintQuantity={setMintQuantity}
               CORS_PROXY={CORS_PROXY}
               USE_USERNAMES={USE_USERNAMES}
+              COLLECTION_ADDRESS={COLLECTION_ADDRESS}
             />
           ))}
         </div>

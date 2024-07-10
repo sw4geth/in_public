@@ -21,8 +21,9 @@ const TokenCard = ({
   setSortOrder,
   setNewComments,
   setMintQuantity,
+  USE_USERNAMES,
   CORS_PROXY,
-  USE_USERNAMES
+  COLLECTION_ADDRESS
 }) => {
   const [creatorProfile, setCreatorProfile] = useState(null);
 
@@ -37,6 +38,18 @@ const TokenCard = ({
     getCreatorProfile();
   }, [token.originatorAddress, userProfiles, USE_USERNAMES, CORS_PROXY]);
 
+  const getZoraTokenUrl = (tokenId) => {
+    return `https://testnet.zora.co/collect/zsep:${COLLECTION_ADDRESS}/${tokenId}`;
+  };
+
+  const getZoraTransactionUrl = (txHash) => {
+    return `https://sepolia.explorer.zora.energy/tx/${txHash}`;
+  };
+
+  const getZoraProfileUrl = (txHash) => {
+    return `https://zora.co/${txHash}`;
+  };
+
   return (
     <div className="token-card">
       {USE_USERNAMES ? (
@@ -44,19 +57,47 @@ const TokenCard = ({
           {creatorProfile?.avatar && (
             <img src={creatorProfile.avatar} alt="Creator avatar" className="creator-avatar" />
           )}
-          {creatorProfile?.username || token.originatorAddress} posted {token.metadata.name}
+          <span>{creatorProfile?.username || token.originatorAddress} posted </span>
+          <h2>{token.metadata.name}</h2>
         </div>
       ) : (
         <>
-          <div className="token-title"><h2>{token.metadata.name}</h2></div>
-          <div className="creator-info">Creator: {token.originatorAddress}</div>
+          <h2 className="token-title">{token.metadata.name}</h2>
+          <div className="creator-info">Creator: <a
+          href={getZoraProfileUrl(token.originatorAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="info-link">
+          {token.originatorAddress}
+          </a>
+          </div>
         </>
       )}
       <div className="post-info">
-      <div>Block: {token.blockNumber}</div>
-      <div>Tx: {token.transactionHash}</div>
+        <div>
+          Token ID:
+          <a
+            href={getZoraTokenUrl(token.tokenId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="info-link"
+          >
+            {token.tokenId}
+          </a>
+        </div>
+        <div>Block: {token.blockNumber}</div>
+        <div>
+          Tx:
+          <a
+            href={getZoraTransactionUrl(token.transactionHash)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="info-link"
+          >
+            {token.transactionHash.slice(0, 8)}...
+          </a>
+        </div>
       </div>
-
       <MediaRenderer mediaType={token.mediaType} url={token.mediaURL} imageUrl={token.imageURL} />
 
       <CommentSection

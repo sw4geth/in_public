@@ -54,8 +54,6 @@
   display: flex;
   align-items: center;
   margin-bottom: 10px;
-  font-size: 1.2em;
-  line-height: 1.4;
   font-family: 'GT-Cinetype-Regular', sans-serif;
 }
 
@@ -71,10 +69,20 @@
   color: #666;
 }
 
-.post-info{
+.post-info {
+  margin-bottom: 25px;
   font-size: 0.9em;
   color: #666;
-  margin-bottom: 25px;
+}
+
+.info-link {
+  color: #0066cc;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.info-link:hover {
+  text-decoration: underline;
 }
 
 .user-avatar {
