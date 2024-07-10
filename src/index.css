@@ -154,6 +154,14 @@
   margin-top: 100px;
   padding-top: 20px;
 }
+.comment-section img,
+.comment-section video {
+  max-width: 300px;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
 
 .comment-list {
   list-style-type: none;
