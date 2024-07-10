@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { pdfjs } from 'react-pdf';
 import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `pdf.worker.mjs`;
 
-type MediaType = 'image' | 'video' | 'audio' | 'text' | 'pdf' | 'gltf';
+type MediaType = 'image' | 'video' | 'audio' | 'text' | 'pdf' | 'gltf' | 'html';
 
 interface MediaRendererProps {
   mediaType: MediaType;
@@ -26,6 +26,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isHTML, setIsHTML] = useState<boolean>(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!url) {
@@ -35,7 +36,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
     }
     setLoading(true);
     setError(null);
-    if (mediaType === 'text') {
+    if (mediaType === 'text' || mediaType === 'html') {
       fetch(url)
         .then(response => {
           if (!response.ok) {
@@ -45,7 +46,15 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         })
         .then(text => {
           setContent(text);
-          setIsHTML(text.trim().toLowerCase().startsWith('<!doctype html>'));
+          if (mediaType === 'html') {
+            setIsHTML(true);
+          } else {
+            const lowerCaseText = text.trim().toLowerCase();
+            const isHTMLContent = lowerCaseText.startsWith('<!doctype html') || lowerCaseText.startsWith('<html');
+            setIsHTML(isHTMLContent);
+          }
+          console.log('Content type:', isHTML ? 'HTML' : 'Text');
+          console.log('Content preview:', text.substring(0, 100));
           setLoading(false);
         })
         .catch(error => {
@@ -58,6 +67,13 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
     }
   }, [mediaType, url]);
 
+  useEffect(() => {
+    if (isHTML && iframeRef.current) {
+      const iframe = iframeRef.current;
+      iframe.srcdoc = content;
+    }
+  }, [isHTML, content]);
+
   const Model: React.FC<{ url: string }> = ({ url }) => {
     const { scene } = useGLTF(url) as GLTFResult;
     return <primitive object={scene} />;
@@ -68,9 +84,22 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
     cMapPacked: true,
   }), []);
 
-  if (loading || error) {
-    return <div className="media-container" />;
+  if (loading) {
+    return <div className="media-container">Loading...</div>;
   }
+
+  if (error) {
+    return <div className="media-container">Error: {error}</div>;
+  }
+
+  const renderHTMLContent = () => (
+    <iframe
+      ref={iframeRef}
+      style={{ width: '100%', height: '500px', border: 'none' }}
+      sandbox="allow-scripts allow-same-origin"
+      title="HTML Content"
+    />
+  );
 
   switch(mediaType) {
     case 'image':
@@ -102,19 +131,16 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
           </div>
         </div>
       );
+    case 'html':
+      return (
+        <div className="media-container html-container">
+          {renderHTMLContent()}
+        </div>
+      );
     case 'text':
       return (
         <div className="media-container text-container">
-          {isHTML ? (
-            <iframe
-              srcDoc={content}
-              style={{ width: '100%', height: '500px', border: 'none' }}
-              sandbox="allow-scripts"
-              title="HTML Content"
-            />
-          ) : (
-            <ReactMarkdown>{content}</ReactMarkdown>
-          )}
+          {isHTML ? renderHTMLContent() : <ReactMarkdown>{content}</ReactMarkdown>}
         </div>
       );
     case 'pdf':
@@ -131,7 +157,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         </div>
       );
     default:
-      return <div className="media-container" />;
+      return <div className="media-container">Unsupported media type</div>;
   }
 };
 

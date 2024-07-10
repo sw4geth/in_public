@@ -4,6 +4,7 @@ export const determineMediaType = (mimeType: string): string => {
   if (mimeType.startsWith('audio/')) return 'audio';
   if (mimeType === 'application/pdf') return 'pdf';
   if (mimeType === 'text/plain' || mimeType === 'application/json') return 'text';
+  if (mimeType === 'text/html') return 'html';
   if (mimeType === 'model/gltf-binary') return 'gltf';
   return 'unknown';
 }

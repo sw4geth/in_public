@@ -17,6 +17,7 @@ export const createFetchTokenDataQuery = (collectionAddress: string, network: st
               blockTimestamp
               transactionHash
             }
+            originatorAddress
           }
         }
       }
@@ -27,8 +28,9 @@ export const createFetchTokenDataQuery = (collectionAddress: string, network: st
     ) {
       comments {
         tokenId
-        fromAddress
+        quantity
         comment
+        fromAddress
         transactionInfo {
           blockNumber
           blockTimestamp
@@ -67,7 +69,10 @@ export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string,
       .map(comment => ({
         fromAddress: comment.fromAddress,
         comment: comment.comment,
-        blockNumber: comment.transactionInfo.blockNumber
+        quantity: comment.quantity,
+        blockNumber: comment.transactionInfo.blockNumber,
+        blockTimestamp: comment.transactionInfo.blockTimestamp,
+        transactionHash: comment.transactionInfo.transactionHash
       }));
 
     return {
@@ -77,7 +82,10 @@ export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string,
       comments,
       imageURL,
       metadata,
-      blockNumber: token.mintInfo.mintContext.blockNumber
+      blockNumber: token.mintInfo.mintContext.blockNumber,
+      blockTimestamp: token.mintInfo.mintContext.blockTimestamp,
+      transactionHash: token.mintInfo.mintContext.transactionHash,
+      originatorAddress: token.mintInfo.originatorAddress
     };
   });
 }

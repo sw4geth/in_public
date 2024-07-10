@@ -4,15 +4,15 @@ import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
 import { createCollectorClient } from "@zoralabs/protocol-sdk";
 import { WagmiConfig } from 'wagmi';
 import { mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia } from 'wagmi/chains';
-import MediaRenderer from './MediaRenderer';
-import CommentButton from './CommentButton';
 import '@rainbow-me/rainbowkit/styles.css';
 import { config } from './wagmi';
-import { getColorFromAddress } from './utils';
-import { fetchTokenData } from './api';
 import lottie from "lottie-web";
 import loader from './loader.json';
-import ReactMarkdown from 'react-markdown';
+import TokenCard from './TokenCard';
+import { fetchUserProfile } from './fetchUserProfile';
+import { getData } from './getData';
+import headerImage from './header.svg'; // Update this path
+
 
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 
@@ -57,25 +57,6 @@ function App() {
     return null;
   }, [chain?.id, publicClient]);
 
-  const fetchUserProfile = async (address) => {
-    if (!USE_USERNAMES) return null;
-    if (userProfiles[address]) return userProfiles[address];
-    try {
-      const response = await fetch(`${CORS_PROXY}https://zora.co/api/profiles/${address}`);
-      if (!response.ok) throw new Error('Failed to fetch user profile');
-      const data = await response.json();
-      const profile = {
-        username: data.username || data.displayName || null,
-        avatar: data.avatar || null
-      };
-      setUserProfiles(prev => ({ ...prev, [address]: profile }));
-      return profile;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      return null;
-    }
-  };
-
   useEffect(() => {
     lottie.loadAnimation({
       container: document.querySelector("#loader"),
@@ -84,28 +65,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const getData = async () => {
-      try {
-        const tokenData = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN);
-        setTokens(tokenData);
-
-        // Fetch user profiles for all unique addresses in comments
-        const uniqueAddresses = new Set(tokenData.flatMap(token =>
-          token.comments.map(comment => comment.fromAddress)
-        ));
-
-        for (const address of uniqueAddresses) {
-          await fetchUserProfile(address);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
+    const fetchData = async () => {
+      await getData(
+        API_ENDPOINT,
+        IPFS_GATEWAY,
+        COLLECTION_ADDRESS,
+        NETWORK,
+        CHAIN,
+        USE_USERNAMES,
+        CORS_PROXY,
+        userProfiles,
+        setUserProfiles,
+        setTokens,
+        setError
+      );
+      setLoading(false);
     };
 
-    getData();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -169,12 +146,6 @@ function App() {
     }
   }, [isWriteError]);
 
-  const sortComments = (comments) => {
-    return [...comments].sort((a, b) => {
-      return sortOrder === 'newest' ? b.blockNumber - a.blockNumber : a.blockNumber - b.blockNumber;
-    });
-  };
-
   const handleMint = async (tokenId) => {
     if (!isConnected || !collectorClient) {
       console.log("Wallet not connected or collectorClient not initialized");
@@ -221,111 +192,30 @@ function App() {
     <WagmiConfig config={config}>
       <RainbowKitProvider chains={chains}>
         <div className="App">
+        <div className="header-image-container">
+            <img src={headerImage} alt="Header" className="header-image" />
+        </div>
+
           {tokens.slice().reverse().map(token => (
-            <div key={token.tokenId} className="token-card">
-              <h2 className="token-title">{token.metadata.name}</h2>
-              <div className="block-number">Block: {token.blockNumber}</div>
-              <MediaRenderer mediaType={token.mediaType} url={token.mediaURL} imageUrl={token.imageURL} />
-
-              <div className="comment-section">
-                {commentsVisible && (
-                  <div className="comment-sort">
-                    <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-                      <option value="newest">Sort: Newest</option>
-                      <option value="oldest">Sort: Oldest</option>
-                    </select>
-                  </div>
-                )}
-
-                {commentsVisible && (
-  <ul className="comment-list">
-    {sortComments(token.comments).map((comment, index) => (
-      <li key={index} className="comment-item">
-        <div className="comment-avatar">
-          {userProfiles[comment.fromAddress]?.avatar ? (
-            <img
-              src={userProfiles[comment.fromAddress].avatar}
-              alt="User avatar"
-              className="user-avatar"
+            <TokenCard
+              key={token.tokenId}
+              token={token}
+              commentsVisible={commentsVisible}
+              commentInputVisible={commentInputVisible}
+              sortOrder={sortOrder}
+              userProfiles={userProfiles}
+              newComments={newComments}
+              minting={minting}
+              isPending={isPending}
+              isConfirming={isConfirming}
+              handleMint={handleMint}
+              mintQuantity={mintQuantity}
+              setCommentsVisible={setCommentsVisible}
+              setCommentInputVisible={setCommentInputVisible}
+              setSortOrder={setSortOrder}
+              setNewComments={setNewComments}
+              setMintQuantity={setMintQuantity}
             />
-          ) : (
-            <div
-              className="default-avatar"
-              style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
-            ></div>
-          )}
-        </div>
-
-        <div className="comment-content">
-          <span className="comment-address">
-            {userProfiles[comment.fromAddress]?.username || comment.fromAddress}
-          </span>
-
-          <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
-
-
-        </div>
-
-      </li>
-    ))}
-  </ul>
-)}
-
-                <div className="comment-input-container">
-                  <button
-                    className="toggle-comment-input"
-                    onClick={() => setCommentInputVisible(!commentInputVisible)}
-                  >
-                    {commentInputVisible ? '×' : 'Add comment +'}
-                  </button>
-                  {commentInputVisible && (
-                    <textarea
-                      className="comment-input"
-                      placeholder="Type Something"
-                      value={newComments[token.tokenId] || ""}
-                      onChange={(e) => setNewComments(prev => ({ ...prev, [token.tokenId]: e.target.value }))}
-                    />
-                  )}
-                </div>
-
-                <div className="comment-actions">
-                  <button
-                    className="hide-comments-button"
-                    onClick={() => setCommentsVisible(!commentsVisible)}
-                  >
-                    {commentsVisible ? 'Hide Comments' : 'Show Comments'}
-                  </button>
-
-                  <CommentButton
-                  handleMint={handleMint}
-                  tokenId={token.tokenId}
-                  minting={minting}
-                  isPending={isPending}
-                  isConfirming={isConfirming}
-                  expectedChainId={zoraSepolia.id}
-                  expectedNetworkName={zoraSepolia.name}
-                  />
-
-                  <div className="mint-quantity-selector">
-                    <div className="quantity-display">{mintQuantity}x</div>
-                    <div className="quantity-controls">
-                      <button
-                        className="quantity-button increment"
-                        onClick={() => setMintQuantity(prev => Math.min(prev + 1, 99999))}
-                      >
-                        +
-                      </button>
-                      <button
-                        className="quantity-button decrement"
-                        onClick={() => setMintQuantity(prev => Math.max(prev - 1, 1))}
-                      >
-                        -
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           ))}
         </div>
       </RainbowKitProvider>
