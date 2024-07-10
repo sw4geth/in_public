@@ -94,12 +94,12 @@ const CommentSection = ({
           ))}
         </ul>
       )}
-      <div className="comment-input-container">
+      <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
           className="toggle-comment-input"
           onClick={() => setCommentInputVisible(!commentInputVisible)}
         >
-          {commentInputVisible ? '×' : 'Add comment +'}
+          {commentInputVisible ? '×' : 'Add Comment +'}
         </button>
         {commentInputVisible && (
           <textarea
