@@ -215,6 +215,8 @@ function App() {
               setSortOrder={setSortOrder}
               setNewComments={setNewComments}
               setMintQuantity={setMintQuantity}
+              CORS_PROXY={CORS_PROXY}
+              USE_USERNAMES={USE_USERNAMES}
             />
           ))}
         </div>

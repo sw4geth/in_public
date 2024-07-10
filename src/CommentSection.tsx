@@ -21,7 +21,8 @@ const CommentSection = ({
   setCommentInputVisible,
   setSortOrder,
   setNewComments,
-  setMintQuantity
+  setMintQuantity,
+  USE_USERNAMES
 }) => {
   const sortComments = (comments) => {
     return [...comments].sort((a, b) => {
@@ -36,6 +37,10 @@ const CommentSection = ({
           return 0;
       }
     });
+  };
+
+  const truncateAddress = (address) => {
+    return address.slice(0, 8);
   };
 
   return (
@@ -68,9 +73,18 @@ const CommentSection = ({
                 )}
               </div>
               <div className="comment-content">
-                <span className="comment-address">
-                  {userProfiles[comment.fromAddress]?.username || comment.fromAddress}
-                </span>
+                <a
+                  href={`https://zora.co/${comment.fromAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="comment-address"
+                  title={comment.fromAddress}
+                >
+                  {USE_USERNAMES
+                    ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
+                    : truncateAddress(comment.fromAddress)
+                  }
+                </a>
                 <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
                 {comment.quantity > 1 && (
                   <span className="comment-quantity">Minted: {comment.quantity}</span>
