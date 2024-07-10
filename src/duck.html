@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang=en>
+<style>
+body{display:flex;flex-flow:column;align-items:center;justify-content:center;height:100vh;margin:0;background:yellow}
+img{max-width:80%;max-height:60vh}
+#e{color:red;margin-top:10px}
+</style>
+<body>
+<img id=d alt=Duck style=display:none>
+<div id=e></div>
+<script>
+function g(){
+let e=document.getElementById('e'),d=document.getElementById('d');
+e.textContent='';
+fetch('https://api.allorigins.win/get?url='+encodeURIComponent('https://random-d.uk/api/v2/random?t='+Date.now()))
+.then(r=>r.json())
+.then(a=>{
+if(a.contents){
+let b=JSON.parse(a.contents);
+d.src=b.url+'?t='+Date.now();
+d.style.display='block'
+}else throw new Error('Err')
+})
+.catch(x=>{
+console.error('Error:',x);
+e.textContent='Fail'
+})
+}
+</script>
+<button onclick=g()>Quack!</button>
+</body>
+</html>

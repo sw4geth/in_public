@@ -1,43 +1,45 @@
 import { determineMediaType, getIPFSUrl } from './utils';
 
-export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string) => {
-  const query = `
-    query getData {
-      tokens(
-        where: {collectionAddresses: "0x9e2e41d622ddf5c561d57407c6fdfb4f92bf9e1e"}
-        networks: {network: ZORA, chain: ZORA_SEPOLIA}
-        sort: {sortKey: MINTED, sortDirection: ASC}
-      ) {
-        nodes {
-          token {
-            metadata
-            tokenId
-            mintInfo {
-              mintContext {
-                blockNumber
-                blockTimestamp
-                transactionHash
-              }
+export const createFetchTokenDataQuery = (collectionAddress: string, network: string, chain: string) => `
+  query getData {
+    tokens(
+      where: {collectionAddresses: "${collectionAddress}"}
+      networks: {network: ${network}, chain: ${chain}}
+      sort: {sortKey: MINTED, sortDirection: ASC}
+    ) {
+      nodes {
+        token {
+          metadata
+          tokenId
+          mintInfo {
+            mintContext {
+              blockNumber
+              blockTimestamp
+              transactionHash
             }
           }
         }
       }
-      mintComments(
-        networks: {network: ZORA, chain: ZORA_SEPOLIA}
-        where: {collectionAddress: "0x9e2e41d622ddf5c561d57407c6fdfb4f92bf9e1e"}
-      ) {
-        comments {
-          tokenId
-          fromAddress
-          comment
-          transactionInfo {
-            blockNumber
-            blockTimestamp
-            transactionHash
-          }
+    }
+    mintComments(
+      networks: {network: ${network}, chain: ${chain}}
+      where: {collectionAddress: "${collectionAddress}"}
+    ) {
+      comments {
+        tokenId
+        fromAddress
+        comment
+        transactionInfo {
+          blockNumber
+          blockTimestamp
+          transactionHash
         }
       }
-    }`;
+    }
+  }`;
+
+export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string, collectionAddress: string, network: string, chain: string) => {
+  const query = createFetchTokenDataQuery(collectionAddress, network, chain);
 
   const results = await fetch(API_ENDPOINT, {
     method: 'POST',

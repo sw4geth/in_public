@@ -60,6 +60,20 @@
   margin-bottom: 10px;
 }
 
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.default-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
 .media-container {
   width: 100%;
   max-width: 100%;
@@ -149,6 +163,12 @@
 
 .comment-content {
   flex-grow: 1;
+}
+
+.comment-content img,
+.comment-content video {
+  max-width: 350px;
+  height: auto;
 }
 
 .comment-address {
@@ -511,7 +531,7 @@
 
 .pdf-fullscreen-button {
   position: absolute;
-  right: 10px;
+  right: 30px;
 }
 
 .pdf-fullscreen-button svg {
@@ -538,11 +558,13 @@
   .hide-comments-button,
   .comment-sort select,
   .comment-button {
-    height: 36px;
+    height: 30px;
     font-size: 14px;
     padding: 5px 10px;
   }
-
+  .hide-comments-button{
+    font-size: 12px;
+  }
   .comment-sort {
     margin-bottom: 10px;
   }
@@ -555,6 +577,12 @@
   .text-container img,
   .text-container video {
     max-width: 100%;
+    height: auto;
+  }
+
+  .comment-content img,
+  .comment-content video {
+    max-width: 150px;
     height: auto;
   }
 
