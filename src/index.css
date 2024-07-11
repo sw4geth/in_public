@@ -605,6 +605,11 @@
     height: auto;
   }
 
+  .html-container{
+    max-width: 100%;
+    height: auto;
+  }
+
   /* PDF viewer adjustments */
   .pdf-viewer {
     padding: 5px;
