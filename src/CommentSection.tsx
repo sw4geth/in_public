@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { getColorFromAddress } from './utils';
 import CommentButton from './CommentButton';
 import { fetchUserProfiles } from './fetchUserProfile';
 import { zoraSepolia } from 'wagmi/chains';
@@ -78,43 +77,40 @@ const CommentSection = ({
           </select>
         </div>
       )}
-      {commentsVisible && (
+      {commentsVisible && Object.keys(userProfiles).length > 0 && ( // Only render when profiles are loaded
         <ul className="comment-list">
-  {sortComments(token.comments).map((comment, index) => (
-    <li key={index} className="comment-item">
-      <div className="comment-avatar">
-
-          <img
-          src={userProfiles[comment.fromAddress]?.avatar || 'fallback-image-url-if-avatar-missing'}
-          alt="User avatar"
-          className="user-avatar"
-          />
-      
-      </div>
-      <div className="comment-content">
-        <a
-          href={getZoraProfileUrl(comment.fromAddress)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="comment-address"
-          title={comment.fromAddress}
-        >
-          {USE_USERNAMES
-            ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
-            : truncateAddress(comment.fromAddress)}
-        </a>
-        <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
-        {comment.quantity > 1 && (
-          <span className="comment-quantity">
-            Minted: {comment.quantity}
-            {comment.quantity >= 3 && <span className="fire-emoji"> 🔥</span>}
-          </span>
-        )}
-      </div>
-    </li>
-  ))}
-</ul>
-
+          {sortComments(token.comments).map((comment, index) => (
+            <li key={index} className="comment-item">
+              <div className="comment-avatar">
+                <img
+                  src={userProfiles[comment.fromAddress]?.avatar || 'fallback-image-url-if-avatar-missing'}
+                  alt="User avatar"
+                  className="user-avatar"
+                />
+              </div>
+              <div className="comment-content">
+                <a
+                  href={getZoraProfileUrl(comment.fromAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="comment-address"
+                  title={comment.fromAddress}
+                >
+                  {USE_USERNAMES
+                    ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
+                    : truncateAddress(comment.fromAddress)}
+                </a>
+                <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
+                {comment.quantity > 1 && (
+                  <span className="comment-quantity">
+                    Minted: {comment.quantity}
+                    {comment.quantity >= 3 && <span className="fire-emoji"> 🔥</span>}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
