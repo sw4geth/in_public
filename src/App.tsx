@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useConfig } from 'wagmi';
 import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
 import { createCollectorClient } from "@zoralabs/protocol-sdk";
@@ -10,11 +10,12 @@ import lottie from "lottie-web";
 import loader from './loader.json';
 import TokenCard from './TokenCard';
 import { fetchUserProfile } from './fetchUserProfile';
-import { getData } from './getData';
-import headerImage from './header.svg'; // Update this path
-
+import { fetchTokenData } from './api';
+import headerImage from './header.svg';
 
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function App() {
   // Constants
@@ -25,7 +26,9 @@ function App() {
   const API_ENDPOINT = "https://api.zora.co/graphql/";
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
   const CORS_PROXY = "https://corsproxy.io/?";
-  const USE_USERNAMES = false;
+  const USE_USERNAMES = true;
+  const BATCH_SIZE = 10;
+  const DELAY_BETWEEN_BATCHES = 5000; // 5 seconds delay between batches
 
   // State variables
   const [tokens, setTokens] = useState([]);
@@ -39,7 +42,16 @@ function App() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [tokenIdBeingMinted, setTokenIdBeingMinted] = useState(null);
   const [userProfiles, setUserProfiles] = useState({});
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [endCursor, setEndCursor] = useState(null);
+  const [requestCount, setRequestCount] = useState(0);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Refs
   const alertShownRef = useRef(false);
+  const observerTarget = useRef(null);
+  const initialLoadRef = useRef(false);
 
   // Wagmi hooks
   const { address, isConnected, chain } = useAccount();
@@ -57,6 +69,63 @@ function App() {
     return null;
   }, [chain?.id, publicClient]);
 
+  const getUniqueAddresses = useCallback((tokens) => {
+    const addresses = new Set();
+    tokens.forEach(token => {
+      addresses.add(token.originatorAddress);
+      token.comments.forEach(comment => {
+        addresses.add(comment.fromAddress);
+      });
+    });
+    return Array.from(addresses);
+  }, []);
+
+  const fetchUserProfiles = useCallback(async (addresses) => {
+    const profiles = {};
+    for (const address of addresses) {
+      const profile = await fetchUserProfile(address, userProfiles, setUserProfiles, USE_USERNAMES, CORS_PROXY);
+      if (profile) {
+        profiles[address] = profile;
+      }
+    }
+    return profiles;
+  }, [USE_USERNAMES, CORS_PROXY, userProfiles]);
+
+  const loadMoreTokens = useCallback(async () => {
+    if (!hasNextPage || loading || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setLoading(true);
+    try {
+      console.log(`Making request ${requestCount + 1}. Timestamp: ${new Date().toISOString()}`);
+
+      const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, BATCH_SIZE, endCursor);
+
+      setRequestCount(prevCount => prevCount + 1);
+      console.log(`Request ${requestCount + 1} completed. Total requests: ${requestCount + 1}`);
+
+      const newTokens = result.tokens;
+
+      const uniqueAddresses = getUniqueAddresses(newTokens);
+      await wait(1000); // Add a delay before fetching user profiles
+      const newProfiles = await fetchUserProfiles(uniqueAddresses);
+
+      setTokens(prevTokens => [...prevTokens, ...newTokens]);
+      setUserProfiles(prevProfiles => ({ ...prevProfiles, ...newProfiles }));
+      setHasNextPage(result.pageInfo.hasNextPage);
+      setEndCursor(result.pageInfo.endCursor);
+
+      // Add delay before allowing next batch
+      await wait(DELAY_BETWEEN_BATCHES);
+    } catch (error) {
+      console.error('Error loading more tokens:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, getUniqueAddresses, fetchUserProfiles]);
+
   useEffect(() => {
     lottie.loadAnimation({
       container: document.querySelector("#loader"),
@@ -65,25 +134,64 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      await getData(
-        API_ENDPOINT,
-        IPFS_GATEWAY,
-        COLLECTION_ADDRESS,
-        NETWORK,
-        CHAIN,
-        USE_USERNAMES,
-        CORS_PROXY,
-        userProfiles,
-        setUserProfiles,
-        setTokens,
-        setError
+    let observer;
+
+    if (initialLoadComplete && observerTarget.current && !isLoadingMore) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !loading && hasNextPage && !isLoadingMore) {
+            loadMoreTokens();
+          }
+        },
+        { threshold: 0.1 } // Trigger when 10% of the target is visible
       );
-      setLoading(false);
+
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observer && observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [loadMoreTokens, loading, hasNextPage, initialLoadComplete, isLoadingMore]);
+
+  useEffect(() => {
+    const initialLoad = async () => {
+      if (initialLoadRef.current) return; // Prevent multiple initial loads
+      initialLoadRef.current = true;
+
+      setLoading(true);
+      setError(null);
+      try {
+        console.log(`Making initial request. Timestamp: ${new Date().toISOString()}`);
+
+        const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, BATCH_SIZE, null);
+
+        setRequestCount(1);
+        console.log(`Initial request completed. Total requests: 1`);
+
+        const initialTokens = result.tokens;
+
+        const uniqueAddresses = getUniqueAddresses(initialTokens);
+        await wait(1000); // Add a delay before fetching user profiles
+        const initialProfiles = await fetchUserProfiles(uniqueAddresses);
+
+        setTokens(initialTokens);
+        setUserProfiles(initialProfiles);
+        setHasNextPage(result.pageInfo.hasNextPage);
+        setEndCursor(result.pageInfo.endCursor);
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        setError(`Failed to load data. ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchData();
-  }, []);
+    initialLoad();
+  }, []); // Empty dependency array to ensure this only runs once
 
   useEffect(() => {
     if (hash) {
@@ -185,18 +293,18 @@ function App() {
     }
   };
 
-  if (loading) return <div id="loader"></div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading && tokens.length === 0) return <div id="loader"></div>;
+  if (error) return <div>Error: {error}. Please try refreshing the page.</div>;
 
   return (
     <WagmiConfig config={config}>
       <RainbowKitProvider chains={chains}>
         <div className="App">
-        <div className="header-image-container">
+          <div className="header-image-container">
             <img src={headerImage} alt="Header" className="header-image" />
-        </div>
+          </div>
 
-          {tokens.slice().reverse().map(token => (
+          {tokens.map(token => (
             <TokenCard
               key={token.tokenId}
               token={token}
@@ -220,6 +328,12 @@ function App() {
               COLLECTION_ADDRESS={COLLECTION_ADDRESS}
             />
           ))}
+
+          {hasNextPage && (
+            <div ref={observerTarget} style={{ height: '20px', margin: '20px 0' }}>
+              {loading ? 'Loading more...' : 'Scroll to load more'}
+            </div>
+          )}
         </div>
       </RainbowKitProvider>
     </WagmiConfig>
