@@ -67,7 +67,12 @@ const TokenCard = ({
             {creatorProfile?.avatar && (
               <img src={creatorProfile.avatar} alt="Creator avatar" className="creator-avatar" />
             )}
-            <span>{creatorProfile?.username || token.toAddress} posted </span>
+            <span><a
+              href={getZoraProfileUrl(token.toAddress)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="info-link"
+            >{creatorProfile?.username || token.toAddress}</a> posted </span>
           </div>
           <h2>{token.metadata.name}</h2>
         </div>
