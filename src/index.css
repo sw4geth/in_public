@@ -52,9 +52,14 @@
 
 .token-title {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.creator-info {
+  display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  font-family: 'GT-Cinetype-Regular', sans-serif;
+  margin-bottom: 8px;
 }
 
 .creator-avatar {
@@ -64,9 +69,9 @@
   margin-right: 8px;
 }
 
-.creator-info {
-  font-size: 0.9em;
-  color: #666;
+.token-title h2 {
+  margin: 0;
+  /* Add any other styles you want for the title */
 }
 
 .post-info {

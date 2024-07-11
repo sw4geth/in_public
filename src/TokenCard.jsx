@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import MediaRenderer from './MediaRenderer';
 import CommentSection from './CommentSection';
-import { fetchUserProfile } from './fetchUserProfile';
+import { fetchUserProfiles } from './fetchUserProfile';
 
 const TokenCard = ({
   token,
@@ -23,20 +22,30 @@ const TokenCard = ({
   setMintQuantity,
   USE_USERNAMES,
   CORS_PROXY,
-  COLLECTION_ADDRESS
+  COLLECTION_ADDRESS,
+  setUserProfiles
 }) => {
   const [creatorProfile, setCreatorProfile] = useState(null);
 
   useEffect(() => {
-    const getCreatorProfile = async () => {
+    const getProfiles = async () => {
       if (USE_USERNAMES) {
-        const profile = await fetchUserProfile(token.originatorAddress, userProfiles, () => {}, USE_USERNAMES, CORS_PROXY);
-        setCreatorProfile(profile);
+        const addresses = [
+          token.toAddress
+        ]
+
+        try {
+          const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
+          setCreatorProfile(profiles[token.toAddress]);
+          setUserProfiles(profiles);
+        } catch (error) {
+          console.error('Error fetching profiles:', error);
+        }
       }
     };
 
-    getCreatorProfile();
-  }, [token.originatorAddress, userProfiles, USE_USERNAMES, CORS_PROXY]);
+    getProfiles();
+  }, [token.toAddress, newComments, USE_USERNAMES, CORS_PROXY, setUserProfiles]);
 
   const getZoraTokenUrl = (tokenId) => {
     return `https://testnet.zora.co/collect/zsep:${COLLECTION_ADDRESS}/${tokenId}`;
@@ -46,30 +55,34 @@ const TokenCard = ({
     return `https://sepolia.explorer.zora.energy/tx/${txHash}`;
   };
 
-  const getZoraProfileUrl = (txHash) => {
-    return `https://zora.co/${txHash}`;
+  const getZoraProfileUrl = (address) => {
+    return `https://zora.co/${address}`;
   };
 
   return (
     <div className="token-card">
       {USE_USERNAMES ? (
         <div className="token-title">
-          {creatorProfile?.avatar && (
-            <img src={creatorProfile.avatar} alt="Creator avatar" className="creator-avatar" />
-          )}
-          <span>{creatorProfile?.username || token.originatorAddress} posted </span>
+          <div className="creator-info">
+            {creatorProfile?.avatar && (
+              <img src={creatorProfile.avatar} alt="Creator avatar" className="creator-avatar" />
+            )}
+            <span>{creatorProfile?.username || token.toAddress} posted </span>
+          </div>
           <h2>{token.metadata.name}</h2>
         </div>
       ) : (
         <>
           <h2 className="token-title">{token.metadata.name}</h2>
-          <div className="creator-info">Creator: <a
-          href={getZoraProfileUrl(token.originatorAddress)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="info-link">
-          {token.originatorAddress}
-          </a>
+          <div className="creator-info">
+            Creator: <a
+              href={getZoraProfileUrl(token.toAddress)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="info-link"
+            >
+              {token.toAddress}
+            </a>
           </div>
         </>
       )}
@@ -118,6 +131,8 @@ const TokenCard = ({
         setNewComments={setNewComments}
         setMintQuantity={setMintQuantity}
         USE_USERNAMES={USE_USERNAMES}
+        CORS_PROXY={CORS_PROXY}
+        COLLECTION_ADDRESS={COLLECTION_ADDRESS}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useConfig } from 'wagmi';
-import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { createCollectorClient } from "@zoralabs/protocol-sdk";
 import { WagmiConfig } from 'wagmi';
 import { mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia } from 'wagmi/chains';
@@ -9,16 +9,15 @@ import { config } from './wagmi';
 import lottie from "lottie-web";
 import loader from './loader.json';
 import TokenCard from './TokenCard';
-import { fetchUserProfile } from './fetchUserProfile';
+import { fetchUserProfiles } from './fetchUserProfile';
 import { fetchTokenData } from './api';
 import headerImage from './header.svg';
 
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function App() {
-  // Constants
   const COLLECTION_ADDRESS = "0x9e2e41d622ddf5c561d57407c6fdfb4f92bf9e1e";
   const NETWORK = "ZORA";
   const CHAIN = "ZORA_SEPOLIA";
@@ -28,9 +27,8 @@ function App() {
   const CORS_PROXY = "https://corsproxy.io/?";
   const USE_USERNAMES = true;
   const BATCH_SIZE = 10;
-  const DELAY_BETWEEN_BATCHES = 5000; // 5 seconds delay between batches
+  const DELAY_BETWEEN_BATCHES = 5000;
 
-  // State variables
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,12 +46,10 @@ function App() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Refs
   const alertShownRef = useRef(false);
   const observerTarget = useRef(null);
   const initialLoadRef = useRef(false);
 
-  // Wagmi hooks
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
   const { writeContract, data: hash, isPending, isError: isWriteError } = useWriteContract();
@@ -72,24 +68,13 @@ function App() {
   const getUniqueAddresses = useCallback((tokens) => {
     const addresses = new Set();
     tokens.forEach(token => {
-      addresses.add(token.originatorAddress);
+      addresses.add(token.toAddress);
       token.comments.forEach(comment => {
         addresses.add(comment.fromAddress);
       });
     });
     return Array.from(addresses);
   }, []);
-
-  const fetchUserProfiles = useCallback(async (addresses) => {
-    const profiles = {};
-    for (const address of addresses) {
-      const profile = await fetchUserProfile(address, userProfiles, setUserProfiles, USE_USERNAMES, CORS_PROXY);
-      if (profile) {
-        profiles[address] = profile;
-      }
-    }
-    return profiles;
-  }, [USE_USERNAMES, CORS_PROXY, userProfiles]);
 
   const loadMoreTokens = useCallback(async () => {
     if (!hasNextPage || loading || isLoadingMore) return;
@@ -107,15 +92,13 @@ function App() {
       const newTokens = result.tokens;
 
       const uniqueAddresses = getUniqueAddresses(newTokens);
-      await wait(1000); // Add a delay before fetching user profiles
-      const newProfiles = await fetchUserProfiles(uniqueAddresses);
+      const newProfiles = await fetchUserProfiles(uniqueAddresses, CORS_PROXY);
 
       setTokens(prevTokens => [...prevTokens, ...newTokens]);
       setUserProfiles(prevProfiles => ({ ...prevProfiles, ...newProfiles }));
       setHasNextPage(result.pageInfo.hasNextPage);
       setEndCursor(result.pageInfo.endCursor);
 
-      // Add delay before allowing next batch
       await wait(DELAY_BETWEEN_BATCHES);
     } catch (error) {
       console.error('Error loading more tokens:', error);
@@ -124,7 +107,7 @@ function App() {
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, getUniqueAddresses, fetchUserProfiles]);
+  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, getUniqueAddresses]);
 
   useEffect(() => {
     lottie.loadAnimation({
@@ -143,7 +126,7 @@ function App() {
             loadMoreTokens();
           }
         },
-        { threshold: 0.1 } // Trigger when 10% of the target is visible
+        { threshold: 0.1 }
       );
 
       observer.observe(observerTarget.current);
@@ -158,7 +141,7 @@ function App() {
 
   useEffect(() => {
     const initialLoad = async () => {
-      if (initialLoadRef.current) return; // Prevent multiple initial loads
+      if (initialLoadRef.current) return;
       initialLoadRef.current = true;
 
       setLoading(true);
@@ -174,8 +157,7 @@ function App() {
         const initialTokens = result.tokens;
 
         const uniqueAddresses = getUniqueAddresses(initialTokens);
-        await wait(1000); // Add a delay before fetching user profiles
-        const initialProfiles = await fetchUserProfiles(uniqueAddresses);
+        const initialProfiles = await fetchUserProfiles(uniqueAddresses, CORS_PROXY);
 
         setTokens(initialTokens);
         setUserProfiles(initialProfiles);
@@ -191,7 +173,7 @@ function App() {
     };
 
     initialLoad();
-  }, []); // Empty dependency array to ensure this only runs once
+  }, []);
 
   useEffect(() => {
     if (hash) {
@@ -293,6 +275,11 @@ function App() {
     }
   };
 
+  // Debug suggestion: Log tokens passed to TokenCard
+  useEffect(() => {
+    console.log('Tokens passed to TokenCard:', tokens);
+  }, [tokens]);
+
   if (loading && tokens.length === 0) return <div id="loader"></div>;
   if (error) return <div>Error: {error}. Please try refreshing the page.</div>;
 
@@ -326,6 +313,7 @@ function App() {
               CORS_PROXY={CORS_PROXY}
               USE_USERNAMES={USE_USERNAMES}
               COLLECTION_ADDRESS={COLLECTION_ADDRESS}
+              setUserProfiles={setUserProfiles}
             />
           ))}
 

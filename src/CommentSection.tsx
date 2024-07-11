@@ -1,8 +1,8 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { getColorFromAddress } from './utils';
 import CommentButton from './CommentButton';
+import { fetchUserProfiles } from './fetchUserProfile';
 import { zoraSepolia } from 'wagmi/chains';
 
 const CommentSection = ({
@@ -10,7 +10,6 @@ const CommentSection = ({
   commentsVisible,
   commentInputVisible,
   sortOrder,
-  userProfiles,
   newComments,
   minting,
   isPending,
@@ -22,8 +21,29 @@ const CommentSection = ({
   setSortOrder,
   setNewComments,
   setMintQuantity,
-  USE_USERNAMES
+  USE_USERNAMES,
+  CORS_PROXY
 }) => {
+  const [userProfiles, setUserProfiles] = useState({});
+
+  useEffect(() => {
+    const addresses = token.comments.map(comment => comment.fromAddress);
+    console.log('Addresses for fetching profiles:', addresses); // Debug logging
+
+    const fetchProfiles = async () => {
+      try {
+        const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
+        console.log('Fetched profiles:', profiles); // Debug logging
+
+        setUserProfiles(profiles);
+      } catch (error) {
+        console.error('Error fetching profiles:', error); // Error logging
+      }
+    };
+
+    fetchProfiles();
+  }, [token.comments, CORS_PROXY]);
+
   const sortComments = (comments) => {
     return [...comments].sort((a, b) => {
       switch (sortOrder) {
@@ -43,6 +63,10 @@ const CommentSection = ({
     return address.slice(0, 8);
   };
 
+  const getZoraProfileUrl = (address) => {
+    return `https://zora.co/${address}`;
+  };
+
   return (
     <div className="comment-section">
       {commentsVisible && (
@@ -56,46 +80,41 @@ const CommentSection = ({
       )}
       {commentsVisible && (
         <ul className="comment-list">
-          {sortComments(token.comments).map((comment, index) => (
-            <li key={index} className="comment-item">
-              <div className="comment-avatar">
-                {userProfiles[comment.fromAddress]?.avatar ? (
-                  <img
-                    src={userProfiles[comment.fromAddress].avatar}
-                    alt="User avatar"
-                    className="user-avatar"
-                  />
-                ) : (
-                  <div
-                    className="default-avatar"
-                    style={{backgroundColor: getColorFromAddress(comment.fromAddress)}}
-                  ></div>
-                )}
-              </div>
-              <div className="comment-content">
-                <a
-                  href={`https://zora.co/${comment.fromAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="comment-address"
-                  title={comment.fromAddress}
-                >
-                  {USE_USERNAMES
-                    ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
-                    : truncateAddress(comment.fromAddress)
-                  }
-                </a>
-                <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
-                {comment.quantity > 1 && (
-                  <span className="comment-quantity">
-                    Minted: {comment.quantity}
-                    {comment.quantity >= 3 && <span className="fire-emoji"> 🔥</span>}
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+  {sortComments(token.comments).map((comment, index) => (
+    <li key={index} className="comment-item">
+      <div className="comment-avatar">
+
+          <img
+          src={userProfiles[comment.fromAddress]?.avatar || 'fallback-image-url-if-avatar-missing'}
+          alt="User avatar"
+          className="user-avatar"
+          />
+      
+      </div>
+      <div className="comment-content">
+        <a
+          href={getZoraProfileUrl(comment.fromAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="comment-address"
+          title={comment.fromAddress}
+        >
+          {USE_USERNAMES
+            ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
+            : truncateAddress(comment.fromAddress)}
+        </a>
+        <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
+        {comment.quantity > 1 && (
+          <span className="comment-quantity">
+            Minted: {comment.quantity}
+            {comment.quantity >= 3 && <span className="fire-emoji"> 🔥</span>}
+          </span>
+        )}
+      </div>
+    </li>
+  ))}
+</ul>
+
       )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
