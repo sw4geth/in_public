@@ -25,7 +25,7 @@ function App() {
   const API_ENDPOINT = "https://api.zora.co/graphql/";
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
   const CORS_PROXY = "https://corsproxy.io/?";
-  const USE_USERNAMES = true;
+  const USE_USERNAMES = false;
 
   // State variables
   const [tokens, setTokens] = useState([]);
