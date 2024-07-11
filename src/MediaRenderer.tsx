@@ -157,7 +157,12 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
         </div>
       );
     default:
-      return <div className="media-container">Unsupported media type</div>;
+      // Render as text for unsupported media types
+      return (
+        <div className="media-container text-container">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      );
   }
 };
 
