@@ -183,6 +183,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .comment-avatar img {
@@ -210,6 +211,12 @@
 
 .comment-text {
   margin: 10px 0;
+}
+.show-more-link{
+  color: #666;
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  font-size: 0.9em;
+  cursor: pointer;
 }
 
 .comment-quantity {

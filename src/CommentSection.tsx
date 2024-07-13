@@ -20,28 +20,40 @@ const CommentSection = ({
   setSortOrder,
   setNewComments,
   setMintQuantity,
-  USE_USERNAMES,
   CORS_PROXY
 }) => {
   const [userProfiles, setUserProfiles] = useState({});
+  const [processedComments, setProcessedComments] = useState([]);
+  const [expandedComments, setExpandedComments] = useState({});
 
   useEffect(() => {
     const addresses = token.comments.map(comment => comment.fromAddress);
-    console.log('Addresses for fetching profiles:', addresses); // Debug logging
 
     const fetchProfiles = async () => {
       try {
         const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
-        console.log('Fetched profiles:', profiles); // Debug logging
-
         setUserProfiles(profiles);
       } catch (error) {
-        console.error('Error fetching profiles:', error); // Error logging
+        console.error('Error fetching profiles:', error);
       }
     };
 
     fetchProfiles();
   }, [token.comments, CORS_PROXY]);
+
+  useEffect(() => {
+    const processComments = () => {
+      const sorted = sortComments(token.comments);
+      const processed = sorted.map(comment => ({
+        ...comment,
+        truncatedComment: comment.comment.slice(0, 500),
+        needsTruncation: comment.comment.length > 500
+      }));
+      setProcessedComments(processed);
+    };
+
+    processComments();
+  }, [token.comments, sortOrder]);
 
   const sortComments = (comments) => {
     return [...comments].sort((a, b) => {
@@ -58,12 +70,15 @@ const CommentSection = ({
     });
   };
 
-  const truncateAddress = (address) => {
-    return address.slice(0, 8);
-  };
-
   const getZoraProfileUrl = (address) => {
     return `https://zora.co/${address}`;
+  };
+
+  const toggleCommentExpansion = (commentId) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [commentId]: !prev[commentId]
+    }));
   };
 
   return (
@@ -77,9 +92,9 @@ const CommentSection = ({
           </select>
         </div>
       )}
-      {commentsVisible && Object.keys(userProfiles).length > 0 && ( // Only render when profiles are loaded
+      {commentsVisible && processedComments.length > 0 && (
         <ul className="comment-list">
-          {sortComments(token.comments).map((comment, index) => (
+          {processedComments.map((comment, index) => (
             <li key={index} className="comment-item">
               <div className="comment-avatar">
                 <img
@@ -96,11 +111,20 @@ const CommentSection = ({
                   className="comment-address"
                   title={comment.fromAddress}
                 >
-                  {USE_USERNAMES
-                    ? (userProfiles[comment.fromAddress]?.username || comment.fromAddress)
-                    : truncateAddress(comment.fromAddress)}
+                  {userProfiles[comment.fromAddress]?.username || comment.fromAddress}
                 </a>
-                <p className="comment-text"><ReactMarkdown>{comment.comment}</ReactMarkdown></p>
+                <p className="comment-text">
+                  <ReactMarkdown>
+                    {expandedComments[comment.id] || !comment.needsTruncation
+                      ? comment.comment
+                      : `${comment.truncatedComment}...`}
+                  </ReactMarkdown>
+                  {comment.needsTruncation && (
+                    <a href onClick={() => toggleCommentExpansion(comment.id)} className="show-more-link">
+                      {expandedComments[comment.id] ? 'Show less' : 'Show more'}
+                    </a>
+                  )}
+                </p>
                 {comment.quantity > 1 && (
                   <span className="comment-quantity">
                     Minted: {comment.quantity}

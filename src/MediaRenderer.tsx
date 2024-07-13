@@ -53,8 +53,6 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({ mediaType, url, imageUrl 
             const isHTMLContent = lowerCaseText.startsWith('<!doctype html') || lowerCaseText.startsWith('<html');
             setIsHTML(isHTMLContent);
           }
-          console.log('Content type:', isHTML ? 'HTML' : 'Text');
-          console.log('Content preview:', text.substring(0, 100));
           setLoading(false);
         })
         .catch(error => {
