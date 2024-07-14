@@ -260,7 +260,7 @@ function App() {
         minterAccount: address,
         quantityToMint: BigInt(mintQuantity),
         mintComment: newComments[tokenId] || "",
-        mintReferral: "0x0E38A4b9B58AbD2f4c9B2D5486ba047a47606781"
+        mintReferral: "0xf32484112E0b6c994f5dB084D5C15F2a1d6a4228"
       });
 
       console.log('Prepared mint parameters:', parameters);
