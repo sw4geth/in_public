@@ -64,6 +64,10 @@ const CommentSection = ({
           return a.blockNumber - b.blockNumber;
         case 'mostMinted':
           return b.quantity - a.quantity;
+        case 'mostEnjoy':
+          const aEnjoyCount = (a.comment.match(/\$enjoy/gi) || []).length;
+          const bEnjoyCount = (b.comment.match(/\$enjoy/gi) || []).length;
+          return bEnjoyCount - aEnjoyCount;
         default:
           return 0;
       }
@@ -93,6 +97,7 @@ const CommentSection = ({
             <option value="newest">Sort: Newest</option>
             <option value="oldest">Sort: Oldest</option>
             <option value="mostMinted">Sort: Most Minted</option>
+            <option value="mostEnjoy">Sort: $enjoy</option>
           </select>
         </div>
       )}
