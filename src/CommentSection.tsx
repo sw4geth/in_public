@@ -74,6 +74,10 @@ const CommentSection = ({
     return `https://zora.co/${address}`;
   };
 
+  const getZoraAvatar = (address) => {
+    return `https://zora.co/api/avatar/${address}`;
+  };
+
   const toggleCommentExpansion = (commentId) => {
     setExpandedComments(prev => ({
       ...prev,
@@ -98,7 +102,7 @@ const CommentSection = ({
             <li key={index} className="comment-item">
               <div className="comment-avatar">
                 <img
-                  src={userProfiles[comment.fromAddress]?.avatar || 'fallback-image-url-if-avatar-missing'}
+                  src={userProfiles[comment.fromAddress]?.avatar}
                   alt="User avatar"
                   className="user-avatar"
                 />
