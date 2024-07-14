@@ -18,10 +18,10 @@ const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function App() {
-  const COLLECTION_ADDRESS = "0x9e2e41d622ddf5c561d57407c6fdfb4f92bf9e1e";
-  const NETWORK = "ZORA";
-  const CHAIN = "ZORA_SEPOLIA";
-  const EXPECTED_CHAIN_ID = zoraSepolia.id;
+  const COLLECTION_ADDRESS = "0x3f209430017e4fa79fecf663faff8584c0feac78";
+  const NETWORK = "BASE";
+  const CHAIN = "BASE_MAINNET";
+  const EXPECTED_CHAIN_ID = base.id;
   const API_ENDPOINT = "https://api.zora.co/graphql/";
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
   const CORS_PROXY = "https://corsproxy.io/?";

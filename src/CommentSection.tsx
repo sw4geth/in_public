@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CommentButton from './CommentButton';
 import { fetchUserProfiles } from './fetchUserProfile';
-import { zoraSepolia } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 
 const CommentSection = ({
   token,
@@ -165,8 +165,8 @@ const CommentSection = ({
           minting={minting}
           isPending={isPending}
           isConfirming={isConfirming}
-          expectedChainId={zoraSepolia.id}
-          expectedNetworkName={zoraSepolia.name}
+          expectedChainId={base.id}
+          expectedNetworkName={base.name}
         />
         <div className="mint-quantity-selector">
           <div className="quantity-display">{mintQuantity}x</div>
