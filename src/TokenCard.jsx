@@ -47,12 +47,12 @@ const TokenCard = ({
     getProfiles();
   }, [token.toAddress, newComments, USE_USERNAMES, CORS_PROXY, setUserProfiles]);
 
-  const getZoraTokenUrl = (tokenId) => {
-    return `https://testnet.zora.co/collect/zsep:${COLLECTION_ADDRESS}/${tokenId}`;
+  const getTokenUrl = (tokenId) => {
+    return `https://zora.co/collect/base:${COLLECTION_ADDRESS}/${tokenId}`;
   };
 
-  const getZoraTransactionUrl = (txHash) => {
-    return `https://sepolia.explorer.zora.energy/tx/${txHash}`;
+  const getTransactionUrl = (txHash) => {
+    return `https://basescan.org/tx/${txHash}`;
   };
 
   const getZoraProfileUrl = (address) => {
@@ -95,7 +95,7 @@ const TokenCard = ({
         <div>
           Token ID:
           <a
-            href={getZoraTokenUrl(token.tokenId)}
+            href={getTokenUrl(token.tokenId)}
             target="_blank"
             rel="noopener noreferrer"
             className="info-link"
@@ -107,7 +107,7 @@ const TokenCard = ({
         <div>
           Tx:
           <a
-            href={getZoraTransactionUrl(token.transactionHash)}
+            href={getTransactionUrl(token.transactionHash)}
             target="_blank"
             rel="noopener noreferrer"
             className="info-link"
