@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, Download } from 'lucide-react';
 
 interface PDFViewerProps {
   url: string;
@@ -85,6 +85,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
     }, { once: true });
   };
 
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'document.pdf'; // You can customize the download filename here
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className={`pdf-viewer ${isFullscreen ? 'fullscreen' : ''}`} ref={containerRef}>
       <div className="pdf-document" onTouchStart={handleTouchStart}>
@@ -106,10 +115,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
       </div>
       <div className="pdf-controls">
 
-
-
-
-
         <button
           onClick={() => changePage(-1)}
           disabled={pageNumber <= 1}
@@ -122,7 +127,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
           Page {pageNumber} of {numPages || '--'}
         </span>
 
-
         <button
           onClick={() => changePage(1)}
           disabled={pageNumber >= (numPages || 0)}
@@ -130,9 +134,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         >
           Next
         </button>
+        <button onClick={handleDownload} className="pdf-download-button">
+        <Download size={24} />
+        </button>
         <button onClick={toggleFullscreen} className="pdf-fullscreen-button">
           {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
         </button>
+
       </div>
     </div>
   );

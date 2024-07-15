@@ -531,6 +531,18 @@
   position: relative;
 }
 
+.pdf-download-button {
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  background: white;
+  border: 1px solid black;
+  color: black;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  height: 40px;
+  display: flex;
+}
+
 .fullscreen .pdf-controls {
   position: absolute;
   bottom: 0;
@@ -651,6 +663,11 @@
     font-size: 12px;
     height: 30px;
     padding: 2px 5px;
+  }
+  .pdf-download-button {
+    font-size: 12px;
+    height: 30px;
+    padding: 2px;
   }
 
   .pdf-page-info {
