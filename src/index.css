@@ -212,6 +212,15 @@
 .comment-text {
   margin: 10px 0;
 }
+
+.comment-text a {
+  color: blue;
+  text-decoration: none;
+}
+
+.comment-text a:hover {
+  text-decoration: underline;
+}
 .show-more-link{
   color: #666;
   font-family: 'GT-Cinetype-Regular', sans-serif;
