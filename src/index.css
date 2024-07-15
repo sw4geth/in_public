@@ -205,7 +205,7 @@
 }
 
 .comment-address:hover {
-  color: #0066cc;
+  color: #007bff;
   text-decoration: underline;
 }
 
@@ -214,7 +214,7 @@
 }
 
 .comment-text a {
-  color: blue;
+  color: #007bff;
   text-decoration: none;
 }
 
@@ -557,7 +557,7 @@
   align-items: center;
 }
 .pdf-download-button,
-.pdf-button,
+
 .pdf-fullscreen-button {
   font-family: 'GT-Cinetype-Regular', sans-serif;
   background: white;
@@ -573,6 +573,8 @@
 }
 .pdf-button {
   margin: 0 5px;
+  cursor: pointer;
+  color: #007bff;
 }
 .pdf-button:disabled {
   opacity: 0.5;

@@ -120,23 +120,23 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
     </button>
   </div>
   <div className="pdf-navigation">
-    <button
+    <a
       onClick={() => changePage(-1)}
       disabled={pageNumber <= 1}
       className="pdf-button"
     >
       Previous
-    </button>
+    </a>
     <span className="pdf-page-info">
       Page {pageNumber} of {numPages || '--'}
     </span>
-    <button
+    <a
       onClick={() => changePage(1)}
       disabled={pageNumber >= (numPages || 0)}
       className="pdf-button"
     >
       Next
-    </button>
+    </a>
   </div>
   <div className="pdf-controls-right">
     <button onClick={toggleFullscreen} className="pdf-fullscreen-button">
