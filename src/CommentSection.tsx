@@ -25,6 +25,7 @@ const CommentSection = ({
   const [userProfiles, setUserProfiles] = useState({});
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
+  const [visibleComments, setVisibleComments] = useState(10);
 
   useEffect(() => {
     const addresses = token.comments.map(comment => comment.fromAddress);
@@ -54,6 +55,13 @@ const CommentSection = ({
 
     processComments();
   }, [token.comments, sortOrder]);
+
+  useEffect(() => {
+    // Reset visible comments to 10 when comments are hidden or shown
+    if (commentsVisible) {
+      setVisibleComments(10);
+    }
+  }, [commentsVisible]);
 
   const sortComments = (comments) => {
     return [...comments].sort((a, b) => {
@@ -89,6 +97,17 @@ const CommentSection = ({
     }));
   };
 
+  const showMoreComments = () => {
+    setVisibleComments(prevVisible => prevVisible + 10);
+  };
+
+  const toggleCommentsVisibility = () => {
+    setCommentsVisible(!commentsVisible);
+    if (!commentsVisible) {
+      setVisibleComments(10); // Reset to 10 when showing comments
+    }
+  };
+
   return (
     <div className="comment-section">
       {commentsVisible && (
@@ -103,7 +122,7 @@ const CommentSection = ({
       )}
       {commentsVisible && processedComments.length > 0 && (
         <ul className="comment-list">
-          {processedComments.map((comment, index) => (
+          {processedComments.slice(0, visibleComments).map((comment, index) => (
             <li key={index} className="comment-item">
               <div className="comment-avatar">
                 <img
@@ -129,7 +148,7 @@ const CommentSection = ({
                       : `${comment.truncatedComment}...`}
                   </ReactMarkdown>
                   {comment.needsTruncation && (
-                    <a href onClick={() => toggleCommentExpansion(comment.id)} className="show-more-link">
+                    <a href onClick={(e) => { e.preventDefault(); toggleCommentExpansion(comment.id); }} className="show-more-link">
                       {expandedComments[comment.id] ? 'Show less' : 'Show more'}
                     </a>
                   )}
@@ -144,6 +163,11 @@ const CommentSection = ({
             </li>
           ))}
         </ul>
+      )}
+      {commentsVisible && processedComments.length > visibleComments && (
+        <a href onClick={(e) => { e.preventDefault(); showMoreComments(); }} className="show-more-comments">
+          Show ({processedComments.length - visibleComments}) more comments
+        </a>
       )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
@@ -164,7 +188,7 @@ const CommentSection = ({
       <div className="comment-actions">
         <button
           className="hide-comments-button"
-          onClick={() => setCommentsVisible(!commentsVisible)}
+          onClick={toggleCommentsVisibility}
         >
           {commentsVisible ? 'Hide Comments' : 'Show Comments'}
         </button>
@@ -195,6 +219,7 @@ const CommentSection = ({
           </div>
         </div>
       </div>
+    
     </div>
   );
 };

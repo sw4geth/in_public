@@ -312,6 +312,17 @@
   font-family: 'GT-Cinetype-Regular', sans-serif;
 }
 
+.show-more-comments {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  color: #007bff;
+  text-decoration: none;
+}
+.show-more-comments:hover {
+  text-decoration: underline;
+}
+
 .quantity-display {
   background-color: #444444;
   color: white;
