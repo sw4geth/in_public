@@ -33,6 +33,23 @@ const createDefaultAvatar = (address) => {
     .replace(/{HUE}/g, hue);
 };
 
+const fetchAndEncodeAvatar = async (address, CORS_PROXY) => {
+  try {
+    const response = await fetch(`${CORS_PROXY}https://zora.co/api/avatar/${address}`);
+    if (!response.ok) throw new Error(`Failed to fetch avatar for ${address}`);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error(`Error fetching avatar for ${address}:`, error);
+    return null;
+  }
+};
+
 export const fetchUserProfiles = async (addresses, CORS_PROXY) => {
   try {
     const uniqueAddresses = [...new Set(addresses)];
@@ -42,15 +59,18 @@ export const fetchUserProfiles = async (addresses, CORS_PROXY) => {
         if (!profileResponse.ok) throw new Error(`Failed to fetch profile for ${address}`);
         const profileData = await profileResponse.json();
         let avatar = profileData.avatar;
+
         if (avatar && avatar.startsWith('/api/avatar/')) {
-          // If the avatar URL starts with 'api/avatar/', use the default avatar
-          console.log(`Using default avatar for ${address}`);
-          avatar = `data:image/svg+xml;base64,${btoa(createDefaultAvatar(address))}`;
-        } else if (!avatar) {
-          // If no avatar is provided, use the default avatar
+          // If the avatar URL starts with '/api/avatar/', fetch and encode it
+          console.log(`Fetching and encoding avatar for ${address}`);
+          avatar = await fetchAndEncodeAvatar(address, CORS_PROXY);
+        }
+
+        if (!avatar) {
+          // If no avatar is provided or fetching failed, use the default avatar
           avatar = `data:image/svg+xml;base64,${btoa(createDefaultAvatar(address))}`;
         }
-        // In all other cases, use the provided avatar URL
+
         return {
           address,
           data: {
