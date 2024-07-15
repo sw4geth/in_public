@@ -74,7 +74,7 @@ export const fetchUserProfiles = async (addresses, CORS_PROXY) => {
         return {
           address,
           data: {
-            username: profileData.username || profileData.displayName || null,
+            username: profileData.username || profileData.displayName || profileData.ensName || null,
             avatar: avatar
           }
         };
