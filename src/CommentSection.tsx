@@ -25,7 +25,7 @@ const CommentSection = ({
   const [userProfiles, setUserProfiles] = useState({});
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
-  const [visibleComments, setVisibleComments] = useState(10);
+  const [visibleComments, setVisibleComments] = useState(5);
 
   useEffect(() => {
     const addresses = token.comments.map(comment => comment.fromAddress);
@@ -57,9 +57,9 @@ const CommentSection = ({
   }, [token.comments, sortOrder]);
 
   useEffect(() => {
-    // Reset visible comments to 10 when comments are hidden or shown
+    // Reset visible comments to 5 when comments are hidden or shown
     if (commentsVisible) {
-      setVisibleComments(10);
+      setVisibleComments(5);
     }
   }, [commentsVisible]);
 
@@ -98,13 +98,13 @@ const CommentSection = ({
   };
 
   const showMoreComments = () => {
-    setVisibleComments(prevVisible => prevVisible + 10);
+    setVisibleComments(processedComments.length);
   };
 
   const toggleCommentsVisibility = () => {
     setCommentsVisible(!commentsVisible);
     if (!commentsVisible) {
-      setVisibleComments(10); // Reset to 10 when showing comments
+      setVisibleComments(5); // Reset when showing comments
     }
   };
 

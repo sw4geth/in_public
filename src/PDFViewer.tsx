@@ -114,35 +114,37 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, options }) => {
         </Document>
       </div>
       <div className="pdf-controls">
-
-        <button
-          onClick={() => changePage(-1)}
-          disabled={pageNumber <= 1}
-          className="pdf-button"
-        >
-          Previous
-        </button>
-
-        <span className="pdf-page-info">
-          Page {pageNumber} of {numPages || '--'}
-        </span>
-
-        <button
-          onClick={() => changePage(1)}
-          disabled={pageNumber >= (numPages || 0)}
-          className="pdf-button"
-        >
-          Next
-        </button>
-        <button onClick={handleDownload} className="pdf-download-button">
-        <Download size={24} />
-        </button>
-        <button onClick={toggleFullscreen} className="pdf-fullscreen-button">
-          {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
-        </button>
-
-      </div>
-    </div>
+  <div className="pdf-controls-left">
+    <button onClick={handleDownload} className="pdf-download-button">
+      <Download size={24} />
+    </button>
+  </div>
+  <div className="pdf-navigation">
+    <button
+      onClick={() => changePage(-1)}
+      disabled={pageNumber <= 1}
+      className="pdf-button"
+    >
+      Previous
+    </button>
+    <span className="pdf-page-info">
+      Page {pageNumber} of {numPages || '--'}
+    </span>
+    <button
+      onClick={() => changePage(1)}
+      disabled={pageNumber >= (numPages || 0)}
+      className="pdf-button"
+    >
+      Next
+    </button>
+  </div>
+  <div className="pdf-controls-right">
+    <button onClick={toggleFullscreen} className="pdf-fullscreen-button">
+      {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+    </button>
+  </div>
+</div>
+</div>
   );
 };
 
