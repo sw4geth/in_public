@@ -300,7 +300,13 @@ function App() {
         <div className="App">
           <div className="header-image-container">
             <img src={headerImage} alt="Header" className="header-image" />
-          </div>
+            </div>
+            <div className="shopify-button">
+              <a href="https://337609-51.myshopify.com/">
+                <button>Shop</button>
+              </a>
+            </div>
+
 
           {tokens.map(token => (
             <TokenCard

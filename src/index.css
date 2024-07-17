@@ -733,6 +733,39 @@
   }
 }
 
+/* Shopify button */
+
+.shopify-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.shopify-button a {
+  text-decoration: none;
+}
+
+.shopify-button button {
+  font-family: 'GT-Cinetype-Regular', sans-serif;
+  background: white;
+  border: 1px solid black;
+  color: black;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.shopify-button button:hover {
+  background-color: black;
+  color: white;
+}
+
 /* Responsive styles */
 @media (max-width: 1024px) {
   .App {
