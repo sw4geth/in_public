@@ -23,7 +23,7 @@ const CommentSection = ({
   const [userProfiles, setUserProfiles] = useState({});
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
-  const [visibleComments, setVisibleComments] = useState(3);
+  const [visibleComments, setVisibleComments] = useState(2);
   const [commentsVisible, setCommentsVisible] = useState(true);
 
   const sortComments = useCallback((comments) => {
