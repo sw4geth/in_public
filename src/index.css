@@ -737,8 +737,8 @@
 
 .shopify-button {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 2vh;
+  right: 2vw;
   z-index: 1000;
 }
 
@@ -751,14 +751,18 @@
   background: white;
   border: 1px solid black;
   color: black;
-  padding: 10px 20px;
+  padding: 0.5vh 1vw;
   cursor: pointer;
-  font-size: 16px;
-  height: 40px;
+  font-size: clamp(12px, 2vw, 16px);
+  height: clamp(32px, 5vh, 40px);
+  min-width: clamp(60px, 10vw, 100px);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.3s, color 0.3s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .shopify-button button:hover {
