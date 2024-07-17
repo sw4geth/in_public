@@ -29,6 +29,8 @@ function App() {
   const BATCH_SIZE = 10;
   const DELAY_BETWEEN_BATCHES = 5000;
 
+  const renderStartTime = useRef(performance.now());
+
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,9 +71,7 @@ function App() {
     const addresses = new Set();
     tokens.forEach(token => {
       addresses.add(token.toAddress);
-      token.comments.forEach(comment => {
-        addresses.add(comment.fromAddress);
-      });
+
     });
     return Array.from(addresses);
   }, []);
@@ -117,6 +117,12 @@ function App() {
   }, []);
 
   useEffect(() => {
+  const renderEndTime = performance.now();
+  const renderTime = renderEndTime - renderStartTime.current;
+  console.log(`Page render time: ${renderTime.toFixed(2)} milliseconds`);
+  }, []);
+
+  useEffect(() => {
     let observer;
 
     if (initialLoadComplete && observerTarget.current && !isLoadingMore) {
@@ -144,6 +150,9 @@ function App() {
       if (initialLoadRef.current) return;
       initialLoadRef.current = true;
 
+      const loadStartTime = performance.now();
+
+
       setLoading(true);
       setError(null);
       try {
@@ -164,6 +173,8 @@ function App() {
         setHasNextPage(result.pageInfo.hasNextPage);
         setEndCursor(result.pageInfo.endCursor);
         setInitialLoadComplete(true);
+        const loadEndTime = performance.now();
+        console.log(`Initial data load time: ${(loadEndTime - loadStartTime).toFixed(2)} milliseconds`);
       } catch (error) {
         console.error('Error fetching initial data:', error);
         setError(`Failed to load data. ${error.message}`);

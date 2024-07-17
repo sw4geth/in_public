@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CommentButton from './CommentButton';
 import { fetchUserProfiles } from './fetchUserProfile';
@@ -6,7 +6,6 @@ import { base } from 'wagmi/chains';
 
 const CommentSection = ({
   token,
-  commentsVisible,
   commentInputVisible,
   sortOrder,
   newComments,
@@ -15,7 +14,6 @@ const CommentSection = ({
   isConfirming,
   handleMint,
   mintQuantity,
-  setCommentsVisible,
   setCommentInputVisible,
   setSortOrder,
   setNewComments,
@@ -26,44 +24,9 @@ const CommentSection = ({
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
   const [visibleComments, setVisibleComments] = useState(5);
+  const [commentsVisible, setCommentsVisible] = useState(true);
 
-  useEffect(() => {
-    const addresses = token.comments.map(comment => comment.fromAddress);
-
-    const fetchProfiles = async () => {
-      try {
-        const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
-        setUserProfiles(profiles);
-      } catch (error) {
-        console.error('Error fetching profiles:', error);
-      }
-    };
-
-    fetchProfiles();
-  }, [token.comments, CORS_PROXY]);
-
-  useEffect(() => {
-    const processComments = () => {
-      const sorted = sortComments(token.comments);
-      const processed = sorted.map(comment => ({
-        ...comment,
-        truncatedComment: comment.comment.slice(0, 500),
-        needsTruncation: comment.comment.length > 500
-      }));
-      setProcessedComments(processed);
-    };
-
-    processComments();
-  }, [token.comments, sortOrder]);
-
-  useEffect(() => {
-    // Reset visible comments to 5 when comments are hidden or shown
-    if (commentsVisible) {
-      setVisibleComments(5);
-    }
-  }, [commentsVisible]);
-
-  const sortComments = (comments) => {
+  const sortComments = useCallback((comments) => {
     return [...comments].sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
@@ -80,14 +43,40 @@ const CommentSection = ({
           return 0;
       }
     });
-  };
+  }, [sortOrder]);
+
+  useEffect(() => {
+    const processComments = () => {
+      const sorted = sortComments(token.comments);
+      const processed = sorted.map(comment => ({
+        ...comment,
+        truncatedComment: comment.comment.slice(0, 500),
+        needsTruncation: comment.comment.length > 500
+      }));
+      setProcessedComments(processed);
+    };
+
+    processComments();
+  }, [token.comments, sortComments]);
+
+  const fetchProfiles = useCallback(async () => {
+    if (commentsVisible && processedComments.length > 0) {
+      const addresses = processedComments.slice(0, visibleComments).map(comment => comment.fromAddress);
+      try {
+        const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
+        setUserProfiles(prevProfiles => ({...prevProfiles, ...profiles}));
+      } catch (error) {
+        console.error('Error fetching profiles:', error);
+      }
+    }
+  }, [commentsVisible, processedComments, visibleComments, CORS_PROXY]);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
 
   const getZoraProfileUrl = (address) => {
     return `https://zora.co/${address}`;
-  };
-
-  const getZoraAvatar = (address) => {
-    return `https://zora.co/api/avatar/${address}`;
   };
 
   const toggleCommentExpansion = (commentId) => {
@@ -98,14 +87,22 @@ const CommentSection = ({
   };
 
   const showMoreComments = () => {
-    setVisibleComments(processedComments.length);
+    setVisibleComments(prevVisible => {
+      const newVisible = Math.min(prevVisible + 10, processedComments.length);
+      return newVisible;
+    });
   };
 
   const toggleCommentsVisibility = () => {
-    setCommentsVisible(!commentsVisible);
+    setCommentsVisible(prev => !prev);
     if (!commentsVisible) {
-      setVisibleComments(5); // Reset when showing comments
+      setVisibleComments(2);
     }
+  };
+
+  const truncateUsername = (username, maxLength = 20) => {
+    if (username.length <= maxLength) return username;
+    return `${username.slice(0, maxLength - 3)}...`;
   };
 
   return (
@@ -125,11 +122,13 @@ const CommentSection = ({
           {processedComments.slice(0, visibleComments).map((comment, index) => (
             <li key={index} className="comment-item">
               <div className="comment-avatar">
-                <img
-                  src={userProfiles[comment.fromAddress]?.avatar}
-                  alt="User avatar"
-                  className="user-avatar"
-                />
+                {userProfiles[comment.fromAddress]?.avatar && (
+                  <img
+                    src={userProfiles[comment.fromAddress].avatar}
+                    alt="User avatar"
+                    className="user-avatar"
+                  />
+                )}
               </div>
               <div className="comment-content">
                 <a
@@ -139,7 +138,7 @@ const CommentSection = ({
                   className="comment-address"
                   title={comment.fromAddress}
                 >
-                  {userProfiles[comment.fromAddress]?.username || comment.fromAddress}
+                  {truncateUsername(userProfiles[comment.fromAddress]?.username || comment.fromAddress)}
                 </a>
                 <p className="comment-text">
                   <ReactMarkdown>
@@ -165,10 +164,17 @@ const CommentSection = ({
         </ul>
       )}
       {commentsVisible && processedComments.length > visibleComments && (
-        <a href onClick={(e) => { e.preventDefault(); showMoreComments(); }} className="show-more-comments">
-          Show ({processedComments.length - visibleComments}) more comments
+      <a
+        href
+        onClick={(e) => {
+          e.preventDefault();
+          showMoreComments();
+        }}
+        className="show-more-comments"
+        >
+        Show {processedComments.length - visibleComments} more comments
         </a>
-      )}
+        )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
           className="toggle-comment-input"
@@ -190,7 +196,7 @@ const CommentSection = ({
           className="hide-comments-button"
           onClick={toggleCommentsVisibility}
         >
-          {commentsVisible ? 'Hide Comments' : 'Show Comments'}
+          {commentsVisible ? 'Hide Comments' : `Show ${token.comments.length} Comments`}
         </button>
         <CommentButton
           handleMint={handleMint}
@@ -219,7 +225,6 @@ const CommentSection = ({
           </div>
         </div>
       </div>
-
     </div>
   );
 };
