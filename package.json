@@ -15,7 +15,7 @@
     "@react-three/fiber": "^8.16.8",
     "@tanstack/react-query": "5.0.5",
     "@zoralabs/nft-hooks": "^1.2.1",
-    "@zoralabs/protocol-sdk": "^0.7.1",
+    "@zoralabs/protocol-sdk": "^0.9.3",
     "axios": "^1.7.2",
     "gh-pages": "^6.1.1",
     "lottie-web": "^5.12.2",
