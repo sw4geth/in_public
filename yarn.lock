@@ -1591,17 +1591,17 @@
     swr "^1.3.0"
     tslib "^2.4.0"
 
-"@zoralabs/protocol-deployments@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.npmjs.org/@zoralabs/protocol-deployments/-/protocol-deployments-0.3.0.tgz"
-  integrity sha512-T8fVXQ3KC3qXcHfTG14Z6/vnY/2ImIhAjkFNhD3kWKtd8TaXVlLQ1Rqu13XCDP9HxvbmuaaXO/QUx8MHeQ+61g==
+"@zoralabs/protocol-deployments@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.npmjs.org/@zoralabs/protocol-deployments/-/protocol-deployments-0.3.1.tgz"
+  integrity sha512-yHoWl11MA+suFMMmiuI2MNzdQrmDFnq3WDke9ctm+8Ibh+JZ5TPb8Kqu2x5yb8+QVsliq7i+vYc/zqVyOTledw==
 
-"@zoralabs/protocol-sdk@^0.9.3":
-  version "0.9.3"
-  resolved "https://registry.npmjs.org/@zoralabs/protocol-sdk/-/protocol-sdk-0.9.3.tgz"
-  integrity sha512-w/aUShij65ylj3Sy70S7dKgQLUlcwXG65dUfJRtVSNlMqdCy/f312776DXEVxlTHqjtEi7EbSvFL0kcMRJUBeQ==
+"@zoralabs/protocol-sdk@^0.9.5":
+  version "0.9.5"
+  resolved "https://registry.npmjs.org/@zoralabs/protocol-sdk/-/protocol-sdk-0.9.5.tgz"
+  integrity sha512-eiLzI3ovIRgYlA9uoqUb072/1lKi23SU2pAymVAosfgI+sDyozM8514PIMmchJox0mtXGuLW5yheLf30HCmcmQ==
   dependencies:
-    "@zoralabs/protocol-deployments" "^0.3.0"
+    "@zoralabs/protocol-deployments" "^0.3.1"
     abitype "^1.0.2"
 
 "@zoralabs/zdk@2.1.6":
