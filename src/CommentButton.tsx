@@ -21,34 +21,25 @@ const CommentButton = ({
   }, [chain, expectedChainId]);
 
   const getButtonText = () => {
-    if (!isConnected) return isHovered ? "Connect" : "Comment";
-    if (!isCorrectNetwork) return `Switch to ${expectedNetworkName}`;
-    if (isPending) return "Waiting for Approval...";
-    if (isConfirming) return "Confirming...";
-    if (minting[tokenId]) return "Minting...";
-    return "Comment";
+    return "🚧";
   };
 
   return (
     <ConnectButton.Custom>
       {({ openConnectModal }) => {
         const handleClick = () => {
-          if (!isConnected) {
-            openConnectModal();
-          } else if (!isCorrectNetwork && switchChain) {
-            switchChain({ chainId: expectedChainId });
-          } else if (isCorrectNetwork) {
-            handleMint(tokenId);
-          }
+          console.log("Comment functionality temporarily disabled");
+          alert("Commenting functionality is temporarily disabled for maintenance. Please check back later.");
         };
 
         return (
           <button
             className="comment-button"
             onClick={handleClick}
-            disabled={isConfirming || (isConnected && isPending) || (isConnected && minting[tokenId])}
+            disabled={true}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            title="Commenting functionality temporarily disabled for maintenance"
           >
             {getButtonText()}
           </button>
