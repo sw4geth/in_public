@@ -9,7 +9,6 @@ import { config } from './wagmi';
 import lottie from "lottie-web";
 import loader from './loader.json';
 import TokenCard from './TokenCard';
-import { fetchUserProfiles } from './fetchUserProfile';
 import { fetchTokenData } from './api';
 import headerImage from './header.svg';
 
@@ -17,15 +16,19 @@ const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Utility to parse tokenId from the complex string format
+const parseTokenId = (tokenId: string): string => {
+  if (!tokenId) return '0';
+  const parts = tokenId.split('.');
+  return parts[parts.length - 1] || '0';
+};
+
 function App() {
   const COLLECTION_ADDRESS = "0x3f209430017e4fa79fecf663faff8584c0feac78";
-  const NETWORK = "BASE";
-  const CHAIN = "BASE_MAINNET";
+  const CHAIN_ID = 8453; // Base
   const EXPECTED_CHAIN_ID = base.id;
-  const API_ENDPOINT = "https://api.zora.co/graphql/";
+  const API_ENDPOINT = "https://api.zora.co/universal/graphql";
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
-  const CORS_PROXY = "https://corsproxy.io/?";
-  const USE_USERNAMES = true;
   const BATCH_SIZE = 10;
   const DELAY_BETWEEN_BATCHES = 5000;
 
@@ -41,19 +44,20 @@ function App() {
   const [sortOrder, setSortOrder] = useState('newest');
   const [mintQuantity, setMintQuantity] = useState(1);
   const [tokenIdBeingMinted, setTokenIdBeingMinted] = useState(null);
-  const [userProfiles, setUserProfiles] = useState({});
   const [hasNextPage, setHasNextPage] = useState(true);
   const [endCursor, setEndCursor] = useState(null);
   const [requestCount, setRequestCount] = useState(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [tokenIds, setTokenIds] = useState<string[]>([]);
+  const [currentTokenIndex, setCurrentTokenIndex] = useState(0);
 
   const alertShownRef = useRef(false);
   const observerTarget = useRef(null);
   const initialLoadRef = useRef(false);
 
   const { address, isConnected, chain } = useAccount();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: CHAIN_ID });
   const { writeContract, data: hash, isPending, isError: isWriteError } = useWriteContract();
   const { chains } = useConfig();
 
@@ -61,43 +65,94 @@ function App() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const collectorClient = useMemo(() => {
-    if (chain?.id && publicClient) {
-      return createCollectorClient({ chainId: chain.id, publicClient });
+    console.log('Initializing collectorClient...');
+    console.log('chain:', chain);
+    console.log('publicClient:', publicClient);
+    if (publicClient) {
+      const chainIdToUse = chain?.id || CHAIN_ID;
+      console.log('Using chainId:', chainIdToUse);
+      return createCollectorClient({ chainId: chainIdToUse, publicClient });
     }
     return null;
   }, [chain?.id, publicClient]);
 
-  const getUniqueAddresses = useCallback((tokens) => {
-    const addresses = new Set();
-    tokens.forEach(token => {
-      addresses.add(token.toAddress);
+  useEffect(() => {
+    const fetchTokenIds = async () => {
+      if (!collectorClient) {
+        console.log('Collector client not initialized');
+        return;
+      }
 
-    });
-    return Array.from(addresses);
-  }, []);
+      console.log('Starting to fetch token IDs with Zora SDK...');
+      try {
+        const tokenData = await collectorClient.getTokensOfContract({
+          tokenContract: COLLECTION_ADDRESS,
+          mintType: "1155"
+        });
+        console.log('Raw token data from getTokensOfContract:', tokenData);
+
+        const discoveredTokenIds = new Set<string>();
+        if (tokenData && tokenData.tokens && Array.isArray(tokenData.tokens)) {
+          tokenData.tokens.forEach(token => {
+            if (token.token && token.token.tokenId) {
+              const tokenId = parseTokenId(token.token.tokenId.toString());
+              console.log(`Found tokenId: ${tokenId}`);
+              discoveredTokenIds.add(tokenId);
+            }
+          });
+        } else {
+          console.warn('Unexpected token data format:', tokenData);
+        }
+
+        // Sort in descending order for reverse chronological order (last tokenId first)
+        const tokenIdArray = Array.from(discoveredTokenIds).sort((a, b) => Number(b) - Number(a));
+        console.log('Discovered token IDs:', tokenIdArray);
+        setTokenIds(tokenIdArray);
+        setHasNextPage(tokenIdArray.length > 0);
+      } catch (err) {
+        console.error('Error fetching token IDs with Zora SDK getTokensOfContract:', err);
+        setError('Failed to fetch token IDs using Zora SDK.');
+      }
+    };
+
+    if (collectorClient) {
+      fetchTokenIds();
+    }
+  }, [collectorClient]);
 
   const loadMoreTokens = useCallback(async () => {
-    if (!hasNextPage || loading || isLoadingMore) return;
+    if (!hasNextPage || loading || isLoadingMore || currentTokenIndex >= tokenIds.length) return;
 
     setIsLoadingMore(true);
     setLoading(true);
     try {
       console.log(`Making request ${requestCount + 1}. Timestamp: ${new Date().toISOString()}`);
 
-      const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, BATCH_SIZE, endCursor);
+      let newTokens: any[] = [];
+      const endIndex = Math.min(currentTokenIndex + BATCH_SIZE, tokenIds.length);
+      for (let i = currentTokenIndex; i < endIndex; i++) {
+        const tokenId = tokenIds[i];
+        console.log(`Fetching token data for tokenId ${tokenId}...`);
+        try {
+          const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, CHAIN_ID, BATCH_SIZE, endCursor, tokenId);
+          console.log(`Token data for tokenId ${tokenId}:`, result);
+          newTokens.push(...result.tokens);
+        } catch (err) {
+          console.error(`Error fetching token data for tokenId ${tokenId}:`, err);
+          continue;
+        }
+      }
+      setCurrentTokenIndex(endIndex);
 
       setRequestCount(prevCount => prevCount + 1);
       console.log(`Request ${requestCount + 1} completed. Total requests: ${requestCount + 1}`);
 
-      const newTokens = result.tokens;
-
-      const uniqueAddresses = getUniqueAddresses(newTokens);
-      const newProfiles = await fetchUserProfiles(uniqueAddresses, CORS_PROXY);
-
-      setTokens(prevTokens => [...prevTokens, ...newTokens]);
-      setUserProfiles(prevProfiles => ({ ...prevProfiles, ...newProfiles }));
-      setHasNextPage(result.pageInfo.hasNextPage);
-      setEndCursor(result.pageInfo.endCursor);
+      setTokens(prevTokens => {
+        const updatedTokens = [...prevTokens, ...newTokens];
+        console.log('Updated tokens:', updatedTokens);
+        return updatedTokens;
+      });
+      setHasNextPage(endIndex < tokenIds.length);
 
       await wait(DELAY_BETWEEN_BATCHES);
     } catch (error) {
@@ -107,7 +162,7 @@ function App() {
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, getUniqueAddresses]);
+  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, tokenIds, currentTokenIndex]);
 
   useEffect(() => {
     lottie.loadAnimation({
@@ -117,9 +172,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-  const renderEndTime = performance.now();
-  const renderTime = renderEndTime - renderStartTime.current;
-  console.log(`Page render time: ${renderTime.toFixed(2)} milliseconds`);
+    const renderEndTime = performance.now();
+    const renderTime = renderEndTime - renderStartTime.current;
+    console.log(`Page render time: ${renderTime.toFixed(2)} milliseconds`);
   }, []);
 
   useEffect(() => {
@@ -152,27 +207,39 @@ function App() {
 
       const loadStartTime = performance.now();
 
-
       setLoading(true);
       setError(null);
       try {
+        console.log('Token IDs available for initial load:', tokenIds);
+        if (tokenIds.length === 0) {
+          throw new Error('No token IDs available to fetch.');
+        }
+
         console.log(`Making initial request. Timestamp: ${new Date().toISOString()}`);
 
-        const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, NETWORK, CHAIN, BATCH_SIZE, null);
+        let initialTokens: any[] = [];
+        const endIndex = Math.min(BATCH_SIZE, tokenIds.length);
+        for (let i = 0; i < endIndex; i++) {
+          const tokenId = tokenIds[i];
+          console.log(`Fetching initial token data for tokenId ${tokenId}...`);
+          try {
+            const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, CHAIN_ID, BATCH_SIZE, null, tokenId);
+            console.log(`Initial token data for tokenId ${tokenId}:`, result);
+            initialTokens.push(...result.tokens);
+          } catch (err) {
+            console.error(`Error fetching initial token data for tokenId ${tokenId}:`, err);
+            continue;
+          }
+        }
+        setCurrentTokenIndex(endIndex);
 
         setRequestCount(1);
         console.log(`Initial request completed. Total requests: 1`);
 
-        const initialTokens = result.tokens;
-
-        const uniqueAddresses = getUniqueAddresses(initialTokens);
-        const initialProfiles = await fetchUserProfiles(uniqueAddresses, CORS_PROXY);
-
         setTokens(initialTokens);
-        setUserProfiles(initialProfiles);
-        setHasNextPage(result.pageInfo.hasNextPage);
-        setEndCursor(result.pageInfo.endCursor);
+        setHasNextPage(endIndex < tokenIds.length);
         setInitialLoadComplete(true);
+
         const loadEndTime = performance.now();
         console.log(`Initial data load time: ${(loadEndTime - loadStartTime).toFixed(2)} milliseconds`);
       } catch (error) {
@@ -183,8 +250,10 @@ function App() {
       }
     };
 
-    initialLoad();
-  }, []);
+    if (tokenIds.length > 0) {
+      initialLoad();
+    }
+  }, [tokenIds]);
 
   useEffect(() => {
     if (hash) {
@@ -286,7 +355,6 @@ function App() {
     }
   };
 
-  // Debug suggestion: Log tokens passed to TokenCard
   useEffect(() => {
     console.log('Tokens passed to TokenCard:', tokens);
   }, [tokens]);
@@ -300,14 +368,12 @@ function App() {
         <div className="App">
           <div className="header-image-container">
             <img src={headerImage} alt="Header" className="header-image" />
-            </div>
-            <div className="shopify-button">
-              <a href="https://337609-51.myshopify.com/">
-                <button>Shop</button>
-              </a>
-            </div>
-
-
+          </div>
+          <div className="shopify-button">
+            <a href="https://337609-51.myshopify.com/">
+              <button>Shop</button>
+            </a>
+          </div>
           {tokens.map(token => (
             <TokenCard
               key={token.tokenId}
@@ -315,7 +381,6 @@ function App() {
               commentsVisible={commentsVisible}
               commentInputVisible={commentInputVisible}
               sortOrder={sortOrder}
-              userProfiles={userProfiles}
               newComments={newComments}
               minting={minting}
               isPending={isPending}
@@ -327,13 +392,8 @@ function App() {
               setSortOrder={setSortOrder}
               setNewComments={setNewComments}
               setMintQuantity={setMintQuantity}
-              CORS_PROXY={CORS_PROXY}
-              USE_USERNAMES={USE_USERNAMES}
-              COLLECTION_ADDRESS={COLLECTION_ADDRESS}
-              setUserProfiles={setUserProfiles}
             />
           ))}
-
           {hasNextPage && (
             <div ref={observerTarget} style={{ height: '20px', margin: '20px 0' }}>
               {loading ? 'Loading more...' : 'Scroll to load more'}

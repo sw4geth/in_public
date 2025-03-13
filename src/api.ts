@@ -2,66 +2,73 @@ import { determineMediaType, getIPFSUrl } from './utils';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const createFetchTokenDataQuery = (collectionAddress: string, network: string, chain: string, limit: number, after: string | null) => `
-  query getData($after: String) {
-    tokens(
-      where: {collectionAddresses: "${collectionAddress}"}
-      networks: {network: ${network}, chain: ${chain}}
-      pagination: {limit: ${limit}, after: $after}
-      sort: {sortKey: MINTED, sortDirection: DESC}
+export const createFetchTokenDataQuery = (collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null) => `
+  query GetTokenData($after: String, $collectionAddress: String!, $chainId: Int!, $tokenId: String) {
+    collectionOrToken(
+      chainId: $chainId
+      collectionAddress: $collectionAddress
+      ${tokenId ? `tokenId: $tokenId` : ''}
     ) {
-      nodes {
-        token {
-          metadata
-          tokenId
-          mintInfo {
-            mintContext {
-              blockNumber
-              blockTimestamp
-              transactionHash
+      ... on GraphQLZora1155Token {
+        id
+        totalTokenMints
+        tokenId: id
+        name
+        address
+        chainId
+        chainName
+        createdAt
+        creatorAddress
+        description
+        media {
+          mimeType
+          originalUri
+          downloadableUri
+        }
+        mediaContent {
+          mimeType
+          originalUri
+        }
+        tokenStandard
+        tokenUri
+        comments(first: ${limit}, after: $after) {
+          edges {
+            node {
+              userAddress
+              userProfile {
+                ... on GraphQLAccountProfile {
+                  username
+                  avatar {
+                    originalUri
+                  }
+                }
+              }
+              comment
             }
-            originatorAddress
-            toAddress
+          }
+          pageInfo {
+            endCursor
+            hasNextPage
           }
         }
       }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
     }
-    mintComments(
-      networks: {network: ${network}, chain: ${chain}}
-      where: {collectionAddress: "${collectionAddress}"}
-    ) {
-      comments {
-        tokenId
-        quantity
-        comment
-        fromAddress
-        transactionInfo {
-          blockNumber
-          blockTimestamp
-          transactionHash
-        }
-      }
-    }
-  }`;
+  }
+`;
 
-export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string, collectionAddress: string, network: string, chain: string, limit: number, after: string | null, retries = 3, initialDelay = 1000) => {
-  const query = createFetchTokenDataQuery(collectionAddress, network, chain, limit, after);
+export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string, collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null = null, retries = 3, initialDelay = 1000) => {
+  const query = createFetchTokenDataQuery(collectionAddress, chainId, limit, after, tokenId);
 
   const executeRequest = async (delay: number): Promise<any> => {
-    await wait(delay); // Wait before making the request
+    await wait(delay);
 
     try {
       const results = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
           "Content-Type": "application/json",
-          "X-API-KEY": "bvGOq2v_wSQ_a0ME1h65Fw"
         },
-        body: JSON.stringify({ query, variables: { after } })
+        body: JSON.stringify({ query, variables: { after, collectionAddress, chainId, tokenId } })
       });
 
       if (results.status === 429) {
@@ -77,21 +84,27 @@ export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string,
       }
 
       if (!results.ok) {
+        const text = await results.text();
+        console.error(`HTTP error! status: ${results.status}, response: ${text}`);
         throw new Error(`HTTP error! status: ${results.status}`);
       }
 
       const allData = await results.json();
+      console.log('API Response:', allData);
 
       if (allData.errors) {
+        console.error('GraphQL Errors:', allData.errors);
         throw new Error(allData.errors[0].message);
       }
 
-      if (!allData.data || !allData.data.tokens || !allData.data.tokens.nodes) {
+      if (!allData.data || !allData.data.collectionOrToken) {
+        console.error('Unexpected API response structure:', allData);
         throw new Error('Unexpected API response structure');
       }
 
       return allData;
     } catch (error) {
+      console.error('Fetch error details:', error.message);
       if (retries > 0) {
         console.log(`Error occurred. Retrying in ${delay}ms...`);
         return executeRequest(delay * 2);
@@ -104,45 +117,49 @@ export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string,
   try {
     const allData = await executeRequest(initialDelay);
 
-    const tokens = allData.data.tokens.nodes.map(node => {
-      const token = node.token;
-      const metadata = token.metadata;
-      const mediaType = determineMediaType(metadata.content.mime);
-      const mediaURL = getIPFSUrl(metadata.content.uri, IPFS_GATEWAY);
-      const imageURL = mediaType === 'audio' ? getIPFSUrl(metadata.image, IPFS_GATEWAY) : null;
+    const tokenData = allData.data.collectionOrToken;
+    if (!tokenData) throw new Error('No token data returned');
 
-      const comments = allData.data.mintComments.comments
-        .filter(comment => comment.tokenId === token.tokenId)
-        .map(comment => ({
-          fromAddress: comment.fromAddress,
-          comment: comment.comment,
-          quantity: comment.quantity,
-          blockNumber: comment.transactionInfo.blockNumber,
-          blockTimestamp: comment.transactionInfo.blockTimestamp,
-          transactionHash: comment.transactionInfo.transactionHash
-        }));
+    const metadata = {
+      content: {
+        mime: tokenData.media?.mimeType,
+        uri: tokenData.media?.originalUri || tokenData.mediaContent?.originalUri
+      },
+      image: tokenData.media?.downloadableUri || null,
+      name: tokenData.name || 'Unnamed Token'
+    };
+    const mediaType = determineMediaType(metadata.content?.mime || '');
+    const mediaURL = getIPFSUrl(metadata.content?.uri || '', IPFS_GATEWAY);
+    const imageURL = mediaType === 'audio' ? getIPFSUrl(metadata.image || '', IPFS_GATEWAY) : null;
 
-      return {
-        tokenId: token.tokenId,
-        mediaType,
-        mediaURL,
-        comments,
-        imageURL,
-        metadata,
-        blockNumber: token.mintInfo.mintContext.blockNumber,
-        blockTimestamp: token.mintInfo.mintContext.blockTimestamp,
-        transactionHash: token.mintInfo.mintContext.transactionHash,
-        originatorAddress: token.mintInfo.originatorAddress,
-        toAddress: token.mintInfo.toAddress
-      };
-    });
+    const comments = tokenData.comments?.edges.map(edge => ({
+      fromAddress: edge.node.userAddress,
+      comment: edge.node.comment,
+      quantity: 1,
+      blockNumber: null,
+      blockTimestamp: null,
+      transactionHash: null,
+      username: edge.node.userProfile?.username || edge.node.userAddress,
+      avatar: edge.node.userProfile?.avatar?.originalUri ? getIPFSUrl(edge.node.userProfile.avatar.originalUri, IPFS_GATEWAY) : null
+    })) || [];
+
+    const token = {
+      tokenId: tokenData.tokenId,
+      mediaType,
+      mediaURL,
+      comments,
+      imageURL,
+      metadata,
+      originatorAddress: tokenData.creatorAddress || null,
+      toAddress: tokenData.creatorAddress || null
+    };
 
     return {
-      tokens,
-      pageInfo: allData.data.tokens.pageInfo
+      tokens: [token],
+      pageInfo: tokenData.comments?.pageInfo || { endCursor: null, hasNextPage: false }
     };
   } catch (error) {
-    console.error('Error in fetchTokenData:', error);
+    console.error('Final error in fetchTokenData:', error);
     throw error;
   }
 };

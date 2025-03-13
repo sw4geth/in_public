@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CommentButton from './CommentButton';
-import { fetchUserProfiles } from './fetchUserProfile';
 import { base } from 'wagmi/chains';
+import { getIPFSUrl } from './utils'; // Import getIPFSUrl
 
 const CommentSection = ({
   token,
@@ -18,9 +18,8 @@ const CommentSection = ({
   setSortOrder,
   setNewComments,
   setMintQuantity,
-  CORS_PROXY
+  IPFS_GATEWAY // Add IPFS_GATEWAY prop
 }) => {
-  const [userProfiles, setUserProfiles] = useState({});
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
   const [visibleComments, setVisibleComments] = useState(2);
@@ -30,11 +29,11 @@ const CommentSection = ({
     return [...comments].sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
-          return b.blockNumber - a.blockNumber;
+          return (b.blockNumber || 0) - (a.blockNumber || 0); // Use 0 if blockNumber is null
         case 'oldest':
-          return a.blockNumber - b.blockNumber;
+          return (a.blockNumber || 0) - (b.blockNumber || 0);
         case 'mostMinted':
-          return b.quantity - a.quantity;
+          return (b.quantity || 1) - (a.quantity || 1); // Use 1 if quantity is null
         case 'mostEnjoy':
           const aEnjoyCount = (a.comment.match(/\$enjoy/gi) || []).length;
           const bEnjoyCount = (b.comment.match(/\$enjoy/gi) || []).length;
@@ -48,8 +47,9 @@ const CommentSection = ({
   useEffect(() => {
     const processComments = () => {
       const sorted = sortComments(token.comments);
-      const processed = sorted.map(comment => ({
+      const processed = sorted.map((comment, index) => ({
         ...comment,
+        id: index, // Assign a unique ID for toggling expansion
         truncatedComment: comment.comment.slice(0, 500),
         needsTruncation: comment.comment.length > 500
       }));
@@ -58,26 +58,6 @@ const CommentSection = ({
 
     processComments();
   }, [token.comments, sortComments]);
-
-  const fetchProfiles = useCallback(async () => {
-    if (commentsVisible && processedComments.length > 0) {
-      const addresses = processedComments.slice(0, visibleComments).map(comment => comment.fromAddress);
-      try {
-        const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
-        setUserProfiles(prevProfiles => ({...prevProfiles, ...profiles}));
-      } catch (error) {
-        console.error('Error fetching profiles:', error);
-      }
-    }
-  }, [commentsVisible, processedComments, visibleComments, CORS_PROXY]);
-
-  useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
-
-  const getZoraProfileUrl = (address) => {
-    return `https://zora.co/${address}`;
-  };
 
   const toggleCommentExpansion = (commentId) => {
     setExpandedComments(prev => ({
@@ -122,9 +102,9 @@ const CommentSection = ({
           {processedComments.slice(0, visibleComments).map((comment, index) => (
             <li key={index} className="comment-item">
               <div className="comment-avatar">
-                {userProfiles[comment.fromAddress]?.avatar && (
+                {comment.avatar && (
                   <img
-                    src={userProfiles[comment.fromAddress].avatar}
+                    src={getIPFSUrl(comment.avatar, IPFS_GATEWAY)} // Convert avatar URL to HTTPS
                     alt="User avatar"
                     className="user-avatar"
                   />
@@ -132,13 +112,13 @@ const CommentSection = ({
               </div>
               <div className="comment-content">
                 <a
-                  href={getZoraProfileUrl(comment.fromAddress)}
+                  href={`https://zora.co/${comment.fromAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="comment-address"
                   title={comment.fromAddress}
                 >
-                  {truncateUsername(userProfiles[comment.fromAddress]?.username || comment.fromAddress)}
+                  {truncateUsername(comment.username || comment.fromAddress)}
                 </a>
                 <p className="comment-text">
                   <ReactMarkdown>
@@ -147,7 +127,14 @@ const CommentSection = ({
                       : `${comment.truncatedComment}...`}
                   </ReactMarkdown>
                   {comment.needsTruncation && (
-                    <a href onClick={(e) => { e.preventDefault(); toggleCommentExpansion(comment.id); }} className="show-more-link">
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleCommentExpansion(comment.id);
+                      }}
+                      className="show-more-link"
+                    >
                       {expandedComments[comment.id] ? 'Show less' : 'Show more'}
                     </a>
                   )}
@@ -164,17 +151,17 @@ const CommentSection = ({
         </ul>
       )}
       {commentsVisible && processedComments.length > visibleComments && (
-      <a
-        href
-        onClick={(e) => {
-          e.preventDefault();
-          showMoreComments();
-        }}
-        className="show-more-comments"
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            showMoreComments();
+          }}
+          className="show-more-comments"
         >
-        Show {processedComments.length - visibleComments} more comments
+          Show {processedComments.length - visibleComments} more comments
         </a>
-        )}
+      )}
       <div className={`comment-input-container ${commentInputVisible ? '' : 'collapsed'}`}>
         <button
           className="toggle-comment-input"

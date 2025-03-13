@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import MediaRenderer from './MediaRenderer';
 import CommentSection from './CommentSection';
 import { fetchUserProfiles } from './fetchUserProfile';
+import { getIPFSUrl } from './utils';
+
+// Function to decode Base64 tokenId to numeric value
+const decodeTokenId = (encodedId) => {
+  try {
+    // Decode Base64 to string, then parse the numeric part
+    const decoded = atob(encodedId);
+    const numericId = decoded.split('.').pop() || decoded; // Extract the last part (e.g., "36")
+    return numericId;
+  } catch (e) {
+    console.error('Error decoding tokenId:', e, encodedId);
+    return encodedId; // Fallback to original if decoding fails
+  }
+};
 
 const TokenCard = ({
   token,
@@ -23,20 +37,19 @@ const TokenCard = ({
   USE_USERNAMES,
   CORS_PROXY,
   COLLECTION_ADDRESS,
-  setUserProfiles
+  setUserProfiles,
+  IPFS_GATEWAY
 }) => {
   const [creatorProfile, setCreatorProfile] = useState(null);
 
   useEffect(() => {
     const getProfiles = async () => {
-      if (USE_USERNAMES) {
-        const addresses = [
-          token.toAddress
-        ]
+      if (USE_USERNAMES && token.originatorAddress) {
+        const addresses = [token.originatorAddress];
 
         try {
           const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
-          setCreatorProfile(profiles[token.toAddress]);
+          setCreatorProfile(profiles[token.originatorAddress]);
           setUserProfiles(profiles);
         } catch (error) {
           console.error('Error fetching profiles:', error);
@@ -45,34 +58,38 @@ const TokenCard = ({
     };
 
     getProfiles();
-  }, [token.toAddress, newComments, USE_USERNAMES, CORS_PROXY, setUserProfiles]);
+  }, [token.originatorAddress, newComments, USE_USERNAMES, CORS_PROXY, setUserProfiles]);
 
   const getTokenUrl = (tokenId) => {
-    return `https://zora.co/collect/base:${COLLECTION_ADDRESS}/${tokenId}`;
-  };
-
-  const getTransactionUrl = (txHash) => {
-    return `https://basescan.org/tx/${txHash}`;
+    const numericTokenId = decodeTokenId(tokenId);
+    return `https://zora.co/collect/base:${COLLECTION_ADDRESS}/${numericTokenId}`;
   };
 
   const getZoraProfileUrl = (address) => {
     return `https://zora.co/${address}`;
   };
 
+  const avatarUrl = creatorProfile?.avatar ? getIPFSUrl(creatorProfile.avatar, IPFS_GATEWAY) : null;
+
   return (
     <div className="token-card">
       {USE_USERNAMES ? (
         <div className="token-title">
           <div className="creator-info">
-            {creatorProfile?.avatar && (
-              <img src={creatorProfile.avatar} alt="Creator avatar" className="creator-avatar" />
+            {avatarUrl && (
+              <img src={avatarUrl} alt="Creator avatar" className="creator-avatar" />
             )}
-            <span><a
-              href={getZoraProfileUrl(token.toAddress)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="info-link"
-            >{creatorProfile?.username || token.toAddress}</a> posted </span>
+            <span>
+              <a
+                href={getZoraProfileUrl(token.originatorAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="info-link"
+              >
+                {creatorProfile?.username || token.originatorAddress || 'Unknown Creator'}
+              </a>{' '}
+              posted
+            </span>
           </div>
           <h2>{token.metadata.name}</h2>
         </div>
@@ -80,39 +97,28 @@ const TokenCard = ({
         <>
           <h2 className="token-title">{token.metadata.name}</h2>
           <div className="creator-info">
-            Creator: <a
-              href={getZoraProfileUrl(token.toAddress)}
+            Creator:{' '}
+            <a
+              href={getZoraProfileUrl(token.originatorAddress)}
               target="_blank"
               rel="noopener noreferrer"
               className="info-link"
             >
-              {token.toAddress}
+              {token.originatorAddress || 'Unknown Creator'}
             </a>
           </div>
         </>
       )}
       <div className="post-info">
         <div>
-          Token ID:
+          Token ID:{' '}
           <a
             href={getTokenUrl(token.tokenId)}
             target="_blank"
             rel="noopener noreferrer"
             className="info-link"
           >
-            {token.tokenId}
-          </a>
-        </div>
-        <div>Block: {token.blockNumber}</div>
-        <div>
-          Tx:
-          <a
-            href={getTransactionUrl(token.transactionHash)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="info-link"
-          >
-            {token.transactionHash.slice(0, 8)}...
+            {decodeTokenId(token.tokenId)}
           </a>
         </div>
       </div>
@@ -120,24 +126,19 @@ const TokenCard = ({
 
       <CommentSection
         token={token}
-        commentsVisible={commentsVisible}
         commentInputVisible={commentInputVisible}
         sortOrder={sortOrder}
-        userProfiles={userProfiles}
         newComments={newComments}
         minting={minting}
         isPending={isPending}
         isConfirming={isConfirming}
         handleMint={handleMint}
         mintQuantity={mintQuantity}
-        setCommentsVisible={setCommentsVisible}
         setCommentInputVisible={setCommentInputVisible}
         setSortOrder={setSortOrder}
         setNewComments={setNewComments}
         setMintQuantity={setMintQuantity}
-        USE_USERNAMES={USE_USERNAMES}
-        CORS_PROXY={CORS_PROXY}
-        COLLECTION_ADDRESS={COLLECTION_ADDRESS}
+        IPFS_GATEWAY={IPFS_GATEWAY}
       />
     </div>
   );
