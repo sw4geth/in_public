@@ -2,6 +2,25 @@ import { determineMediaType, getIPFSUrl } from './utils';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Function to determine if we're in production or development
+const isProduction = (): boolean => {
+  return process.env.NODE_ENV === 'production' || 
+         window.location.hostname !== 'localhost';
+};
+
+// Get the appropriate API endpoint based on environment
+const getApiEndpoint = (originalEndpoint: string): string => {
+  if (isProduction()) {
+    // In production, use our Vercel serverless function
+    // This avoids CORS issues by proxying through the same origin
+    return '/api/zora-proxy';
+  } else {
+    // In development, we can use the direct endpoint
+    // as CORS is typically not an issue in local dev
+    return originalEndpoint;
+  }
+};
+
 export const createFetchTokenDataQuery = (collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null) => `
   query GetTokenData($after: String, $collectionAddress: String!, $chainId: Int!, $tokenId: String) {
     collectionOrToken(
@@ -58,12 +77,15 @@ export const createFetchTokenDataQuery = (collectionAddress: string, chainId: nu
 
 export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string, collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null = null, retries = 3, initialDelay = 1000) => {
   const query = createFetchTokenDataQuery(collectionAddress, chainId, limit, after, tokenId);
+  // Get the appropriate endpoint based on environment
+  const endpoint = getApiEndpoint(API_ENDPOINT);
 
   const executeRequest = async (delay: number): Promise<any> => {
     await wait(delay);
 
     try {
-      const results = await fetch(API_ENDPOINT, {
+      console.log(`Making request to: ${endpoint}`);
+      const results = await fetch(endpoint, {
         method: 'POST',
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +126,7 @@ export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string,
 
       return allData;
     } catch (error) {
-      console.error('Fetch error details:', error.message);
+      console.error('Fetch error details:', error instanceof Error ? error.message : String(error));
       if (retries > 0) {
         console.log(`Error occurred. Retrying in ${delay}ms...`);
         return executeRequest(delay * 2);
