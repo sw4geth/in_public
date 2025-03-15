@@ -77,13 +77,13 @@ function App() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Use a stable CHAIN_ID for collectorClient, not chain?.id
   const collectorClient = useMemo(() => {
     if (publicClient) {
-      const chainIdToUse = chain?.id || CHAIN_ID;
-      return createCollectorClient({ chainId: chainIdToUse, publicClient });
+      return createCollectorClient({ chainId: CHAIN_ID, publicClient });
     }
     return null;
-  }, [chain?.id, publicClient]);
+  }, [publicClient]); // Only recreate if publicClient changes
 
   useEffect(() => {
     const fetchTokenData = async () => {
@@ -147,8 +147,9 @@ function App() {
       }
     };
 
-    if (collectorClient) fetchTokenData();
-  }, [collectorClient]);
+    // Run only on mount, not on chain or connection changes
+    fetchTokenData();
+  }, [collectorClient]); // Empty dependency array to run once
 
   const fetchTokenComments = useCallback(async (tokenIdsToFetch) => {
     if (!tokenIdsToFetch.length || commentsLoading) {
@@ -233,18 +234,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let observer;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && hasNextPage && !isLoadingMore) {
+          loadMoreTokens();
+        }
+      },
+      { threshold: 0.1 }
+    );
 
     if (initialLoadComplete && observerTarget.current && !isLoadingMore) {
-      observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && !loading && hasNextPage && !isLoadingMore) {
-            loadMoreTokens();
-          }
-        },
-        { threshold: 0.1 }
-      );
-
       observer.observe(observerTarget.current);
     }
 
@@ -377,6 +376,7 @@ function App() {
               minting={minting}
               isPending={isPending}
               isConfirming={isConfirming}
+              isSuccess={isSuccess}
               handleMint={handleMint}
               mintQuantity={mintQuantity}
               setCommentsVisible={setCommentsVisible}

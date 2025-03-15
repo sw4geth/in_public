@@ -31,7 +31,7 @@ const generateColor = (address: string): number => {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  return Math.abs(hash) % 360; // Use the hash to generate a hue value between 0 and 359
+  return Math.abs(hash) % 360;
 };
 
 const createDefaultAvatar = (address: string): string => {
@@ -40,7 +40,6 @@ const createDefaultAvatar = (address: string): string => {
     .replace(/{ADDRESS}/g, address.slice(2, 10))
     .replace(/{HUE}/g, hue.toString())
     .trim();
-  // Encode the SVG string as a data URI
   const encodedSvg = encodeURIComponent(svgString);
   return `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
 };
@@ -64,8 +63,10 @@ interface CommentSectionProps {
   minting: Record<string, boolean>;
   isPending: boolean;
   isConfirming: boolean;
+  isSuccess?: boolean; // Add isSuccess to props
   handleMint: (tokenId: string) => void;
   mintQuantity: number;
+  setCommentsVisible: (visible: boolean) => void; // Add to props
   setCommentInputVisible: (visible: boolean) => void;
   setSortOrder: (order: string) => void;
   setNewComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -83,8 +84,10 @@ const CommentSection = ({
   minting,
   isPending,
   isConfirming,
+  isSuccess,
   handleMint,
   mintQuantity,
+  setCommentsVisible,
   setCommentInputVisible,
   setSortOrder,
   setNewComments,
@@ -107,6 +110,13 @@ const CommentSection = ({
       });
     }
   }, [token.tokenId, loadingComments]);
+
+  // Reset comment input after successful mint
+  useEffect(() => {
+    if (isSuccess) {
+      setCommentInputVisible(false); // Optionally collapse the input
+    }
+  }, [isSuccess, setCommentInputVisible]);
 
   const sortComments = useCallback((comments: any[]) => {
     return [...comments].sort((a, b) => {
@@ -156,9 +166,7 @@ const CommentSection = ({
   };
 
   const toggleCommentsVisibility = () => {
-    if (typeof setCommentInputVisible === 'function') {
-      setCommentInputVisible(!commentInputVisible);
-    }
+    setCommentsVisible(!commentsVisible);
   };
 
   const truncateUsername = (handle: string, maxLength = 20) => {
@@ -283,6 +291,7 @@ const CommentSection = ({
           isConfirming={isConfirming}
           expectedChainId={base.id}
           expectedNetworkName={base.name}
+          commentText={newComments[token.tokenId] || ''}
         />
         <div className="mint-quantity-selector">
           <div className="quantity-display">{mintQuantity}x</div>

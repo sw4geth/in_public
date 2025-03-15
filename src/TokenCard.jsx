@@ -12,6 +12,7 @@ const TokenCard = ({
   minting,
   isPending,
   isConfirming,
+  isSuccess,
   handleMint,
   mintQuantity,
   setCommentsVisible,
@@ -91,8 +92,10 @@ const TokenCard = ({
         minting={minting}
         isPending={isPending}
         isConfirming={isConfirming}
+        isSuccess={isSuccess}
         handleMint={handleMint}
         mintQuantity={mintQuantity}
+        setCommentsVisible={setCommentsVisible}
         setCommentInputVisible={setCommentInputVisible}
         setSortOrder={setSortOrder}
         setNewComments={setNewComments}
