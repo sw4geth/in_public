@@ -2,10 +2,52 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CommentButton from './CommentButton';
 import { base } from 'wagmi/chains';
-import { getIPFSUrl } from './utils'; // Import getIPFSUrl
+import { getIPFSUrl } from './utils';
+import lottie from 'lottie-web';
+import loader from './loader.json';
+
+const DEFAULT_AVATAR_TEMPLATE = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="gzr-{ADDRESS}" gradientTransform="translate(66.4578 24.3575) scale(75.2908)" gradientUnits="userSpaceOnUse" r="1" cx="0" cy="0%">
+      <stop offset="15.62%" stop-color="hsl({HUE}, 70%, 85%)" />
+      <stop offset="39.58%" stop-color="hsl({HUE}, 75%, 63%)" />
+      <stop offset="72.92%" stop-color="hsl({HUE}, 79%, 41%)" />
+      <stop offset="90.63%" stop-color="hsl({HUE}, 81%, 32%)" />
+      <stop offset="100%" stop-color="hsl({HUE}, 81%, 32%)" />
+    </radialGradient>
+  </defs>
+  <g>
+    <path d="M100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100C77.6142 100 100 77.6142 100 50Z" fill="url(#gzr-{ADDRESS})" />
+    <path stroke="rgba(0,0,0,0.075)" fill="transparent" stroke-width="1" d="M50,0.5c27.3,0,49.5,22.2,49.5,49.5S77.3,99.5,50,99.5S0.5,77.3,0.5,50S22.7,0.5,50,0.5z" />
+  </g>
+</svg>
+`;
+
+const generateColor = (address) => {
+  let hash = 0;
+  for (let i = 0; i < address.length; i++) {
+    const char = address.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash) % 360; // Use the hash to generate a hue value between 0 and 359
+};
+
+const createDefaultAvatar = (address) => {
+  const hue = generateColor(address);
+  const svgString = DEFAULT_AVATAR_TEMPLATE
+    .replace(/{ADDRESS}/g, address.slice(2, 10))
+    .replace(/{HUE}/g, hue)
+    .trim();
+  // Encode the SVG string as a data URI
+  const encodedSvg = encodeURIComponent(svgString);
+  return `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
+};
 
 const CommentSection = ({
   token,
+  commentsVisible,
   commentInputVisible,
   sortOrder,
   newComments,
@@ -18,22 +60,34 @@ const CommentSection = ({
   setSortOrder,
   setNewComments,
   setMintQuantity,
-  IPFS_GATEWAY // Add IPFS_GATEWAY prop
+  IPFS_GATEWAY,
+  loadingComments = false,
 }) => {
   const [processedComments, setProcessedComments] = useState([]);
   const [expandedComments, setExpandedComments] = useState({});
   const [visibleComments, setVisibleComments] = useState(2);
-  const [commentsVisible, setCommentsVisible] = useState(true);
+
+  useEffect(() => {
+    const container = document.querySelector(`#comment-loader-${token.tokenId}`);
+    if (container) {
+      lottie.loadAnimation({
+        container,
+        animationData: loader,
+        loop: true,
+        autoplay: true,
+      });
+    }
+  }, [token.tokenId]);
 
   const sortComments = useCallback((comments) => {
     return [...comments].sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
-          return (b.blockNumber || 0) - (a.blockNumber || 0); // Use 0 if blockNumber is null
+          return 0; // No timestamp available
         case 'oldest':
-          return (a.blockNumber || 0) - (b.blockNumber || 0);
+          return 0; // No timestamp available
         case 'mostMinted':
-          return (b.quantity || 1) - (a.quantity || 1); // Use 1 if quantity is null
+          return 0; // No quantity available
         case 'mostEnjoy':
           const aEnjoyCount = (a.comment.match(/\$enjoy/gi) || []).length;
           const bEnjoyCount = (b.comment.match(/\$enjoy/gi) || []).length;
@@ -45,44 +99,43 @@ const CommentSection = ({
   }, [sortOrder]);
 
   useEffect(() => {
-    const processComments = () => {
-      const sorted = sortComments(token.comments);
-      const processed = sorted.map((comment, index) => ({
-        ...comment,
-        id: index, // Assign a unique ID for toggling expansion
-        truncatedComment: comment.comment.slice(0, 500),
-        needsTruncation: comment.comment.length > 500
-      }));
-      setProcessedComments(processed);
-    };
+    if (!token.comments || !Array.isArray(token.comments)) {
+      setProcessedComments([]);
+      return;
+    }
 
-    processComments();
-  }, [token.comments, sortComments]);
+    const sorted = sortComments(token.comments);
+    const processed = sorted.map((comment, index) => ({
+      ...comment,
+      id: index,
+      truncatedComment: comment.comment.slice(0, 500),
+      needsTruncation: comment.comment.length > 500,
+      avatar: comment.avatar || createDefaultAvatar(comment.userAddress || 'default'),
+    }));
+    setProcessedComments(processed);
+  }, [token.comments, sortOrder]);
 
   const toggleCommentExpansion = (commentId) => {
-    setExpandedComments(prev => ({
+    setExpandedComments((prev) => ({
       ...prev,
-      [commentId]: !prev[commentId]
+      [commentId]: !prev[commentId],
     }));
   };
 
   const showMoreComments = () => {
-    setVisibleComments(prevVisible => {
-      const newVisible = Math.min(prevVisible + 10, processedComments.length);
-      return newVisible;
-    });
+    setVisibleComments((prevVisible) => Math.min(prevVisible + 10, processedComments.length));
   };
 
   const toggleCommentsVisibility = () => {
-    setCommentsVisible(prev => !prev);
+    setCommentsVisible((prev) => !prev);
     if (!commentsVisible) {
       setVisibleComments(2);
     }
   };
 
-  const truncateUsername = (username, maxLength = 20) => {
-    if (username.length <= maxLength) return username;
-    return `${username.slice(0, maxLength - 3)}...`;
+  const truncateUsername = (handle, maxLength = 20) => {
+    if (handle.length <= maxLength) return handle;
+    return `${handle.slice(0, maxLength - 3)}...`;
   };
 
   return (
@@ -97,28 +150,37 @@ const CommentSection = ({
           </select>
         </div>
       )}
-      {commentsVisible && processedComments.length > 0 && (
+
+      {loadingComments && (
+        <div className="comments-loading">
+          <div id={`comment-loader-${token.tokenId}`} style={{ width: 50, height: 50 }} />
+          <p>Loading comments...</p>
+        </div>
+      )}
+
+      {commentsVisible && !loadingComments && processedComments.length > 0 && (
         <ul className="comment-list">
           {processedComments.slice(0, visibleComments).map((comment, index) => (
             <li key={index} className="comment-item">
               <div className="comment-avatar">
-                {comment.avatar && (
-                  <img
-                    src={getIPFSUrl(comment.avatar, IPFS_GATEWAY)} // Convert avatar URL to HTTPS
-                    alt="User avatar"
-                    className="user-avatar"
-                  />
-                )}
+                <img
+                  src={comment.avatar}
+                  alt="User avatar"
+                  className="user-avatar"
+                  onError={(e) => {
+                    e.currentTarget.src = createDefaultAvatar(comment.userAddress || 'default');
+                  }}
+                />
               </div>
               <div className="comment-content">
                 <a
-                  href={`https://zora.co/${comment.fromAddress}`}
+                  href={`https://zora.co/${comment.userAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="comment-address"
-                  title={comment.fromAddress}
+                  title={comment.userAddress}
                 >
-                  {truncateUsername(comment.username || comment.fromAddress)}
+                  {truncateUsername(comment.handle || comment.userAddress.slice(0, 6))}
                 </a>
                 <p className="comment-text">
                   <ReactMarkdown>
@@ -139,16 +201,13 @@ const CommentSection = ({
                     </a>
                   )}
                 </p>
-                {comment.quantity > 1 && (
-                  <span className="comment-quantity">
-                    Minted: {comment.quantity}
-                    {comment.quantity >= 3 && <span className="fire-emoji"> 🔥</span>}
-                  </span>
-                )}
               </div>
             </li>
           ))}
         </ul>
+      )}
+      {commentsVisible && !loadingComments && processedComments.length === 0 && (
+        <p>No comments yet.</p>
       )}
       {commentsVisible && processedComments.length > visibleComments && (
         <a
@@ -173,17 +232,20 @@ const CommentSection = ({
           <textarea
             className="comment-input"
             placeholder="Type Something"
-            value={newComments[token.tokenId] || ""}
-            onChange={(e) => setNewComments(prev => ({ ...prev, [token.tokenId]: e.target.value }))}
+            value={newComments[token.tokenId] || ''}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setNewComments((prev) => ({
+                ...prev,
+                [token.tokenId]: newValue,
+              }));
+            }}
           />
         )}
       </div>
       <div className="comment-actions">
-        <button
-          className="hide-comments-button"
-          onClick={toggleCommentsVisibility}
-        >
-          {commentsVisible ? 'Hide Comments' : `Show ${token.comments.length} Comments`}
+        <button className="hide-comments-button" onClick={toggleCommentsVisibility}>
+          {commentsVisible ? 'Hide Comments' : `Show ${processedComments.length} Comments`}
         </button>
         <CommentButton
           handleMint={handleMint}
@@ -199,13 +261,21 @@ const CommentSection = ({
           <div className="quantity-controls">
             <button
               className="quantity-button increment"
-              onClick={() => setMintQuantity(prev => Math.min(prev + 1, 99999))}
+              onClick={() => {
+                const newQuantity = Math.min(mintQuantity + 1, 10);
+                setMintQuantity(newQuantity);
+              }}
+              disabled={mintQuantity >= 10}
             >
               +
             </button>
             <button
               className="quantity-button decrement"
-              onClick={() => setMintQuantity(prev => Math.max(prev - 1, 1))}
+              onClick={() => {
+                const newQuantity = Math.max(mintQuantity - 1, 1);
+                setMintQuantity(newQuantity);
+              }}
+              disabled={mintQuantity <= 1}
             >
               -
             </button>

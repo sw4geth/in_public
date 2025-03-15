@@ -162,6 +162,60 @@
   object-fit: contain;
 }
 
+/* Loading indicator styles */
+.comments-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin: 10px 0;
+}
+
+.loader-small {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  margin: 20px 0;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.load-more-button {
+  background-color: #000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.load-more-button:hover {
+  background-color: #333;
+}
+
 .comment-list {
   list-style-type: none;
   padding: 0;

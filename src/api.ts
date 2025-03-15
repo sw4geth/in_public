@@ -1,187 +1,122 @@
-import { determineMediaType, getIPFSUrl } from './utils';
+import { getIPFSUrl } from './utils';
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const fetchComments = async (
+  API_ENDPOINT: string,
+  IPFS_GATEWAY: string,
+  collectionAddress: string,
+  chainId: number,
+  first: number,
+  after: string | null,
+  tokenIds: string[]
+) => {
+  const tokens: Array<{ tokenId: string; comments: any[] }> = [];
+  let globalPageInfo = { hasNextPage: false, endCursor: null };
 
-// Function to determine if we're in production or development
-const isProduction = (): boolean => {
-  return process.env.NODE_ENV === 'production' || 
-         window.location.hostname !== 'localhost';
-};
+  const fetchCommentsForToken = async (tokenId: string) => {
+    let allComments: any[] = [];
+    let pageInfo = { hasNextPage: true, endCursor: null };
+    let currentAfter = after;
 
-// Get the appropriate API endpoint based on environment
-const getApiEndpoint = (originalEndpoint: string): string => {
-  if (isProduction()) {
-    // In production, use our Vercel serverless function
-    // This avoids CORS issues by proxying through the same origin
-    return '/api/zora-proxy';
-  } else {
-    // In development, we can use the direct endpoint
-    // as CORS is typically not an issue in local dev
-    return originalEndpoint;
-  }
-};
-
-export const createFetchTokenDataQuery = (collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null) => `
-  query GetTokenData($after: String, $collectionAddress: String!, $chainId: Int!, $tokenId: String) {
-    collectionOrToken(
-      chainId: $chainId
-      collectionAddress: $collectionAddress
-      ${tokenId ? `tokenId: $tokenId` : ''}
-    ) {
-      ... on GraphQLZora1155Token {
-        id
-        totalTokenMints
-        tokenId: id
-        name
-        address
-        chainId
-        chainName
-        createdAt
-        creatorAddress
-        description
-        media {
-          mimeType
-          originalUri
-          downloadableUri
-        }
-        mediaContent {
-          mimeType
-          originalUri
-        }
-        tokenStandard
-        tokenUri
-        comments(first: ${limit}, after: $after) {
-          edges {
-            node {
-              userAddress
-              userProfile {
-                ... on GraphQLAccountProfile {
-                  username
-                  avatar {
-                    originalUri
+    const query = `
+      query GetTokenComments($collectionAddress: String!, $chainId: Int!, $tokenId: String!, $first: Int, $after: String) {
+        collectionOrToken(
+          chainId: $chainId
+          collectionAddress: $collectionAddress
+          tokenId: $tokenId
+        ) {
+          ... on GraphQLZora1155Token {
+            comments(first: $first, after: $after) {
+              edges {
+                node {
+                  comment
+                  userAddress
+                  userProfile {
+                    handle
+                    avatar {
+                      downloadableUri
+                    }
                   }
                 }
               }
-              comment
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
             }
           }
-          pageInfo {
-            endCursor
-            hasNextPage
-          }
         }
       }
-    }
-  }
-`;
+    `;
 
-export const fetchTokenData = async (API_ENDPOINT: string, IPFS_GATEWAY: string, collectionAddress: string, chainId: number, limit: number, after: string | null, tokenId: string | null = null, retries = 3, initialDelay = 1000) => {
-  const query = createFetchTokenDataQuery(collectionAddress, chainId, limit, after, tokenId);
-  // Get the appropriate endpoint based on environment
-  const endpoint = getApiEndpoint(API_ENDPOINT);
+    while (pageInfo.hasNextPage) {
+      const variables = {
+        collectionAddress,
+        chainId,
+        tokenId,
+        first,
+        after: currentAfter,
+      };
 
-  const executeRequest = async (delay: number): Promise<any> => {
-    await wait(delay);
+      try {
+        const response = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query, variables }),
+        });
 
-    try {
-      console.log(`Making request to: ${endpoint}`);
-      const results = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, variables: { after, collectionAddress, chainId, tokenId } })
-      });
+        const result = await response.json();
+        console.log(`Full API Response for tokenId ${tokenId}:`, JSON.stringify(result, null, 2));
 
-      if (results.status === 429) {
-        const retryAfter = results.headers.get('Retry-After');
-        const retryDelay = retryAfter ? parseInt(retryAfter) * 1000 : delay * 2;
-
-        if (retries > 0) {
-          console.log(`Rate limited. Retrying in ${retryDelay}ms...`);
-          return executeRequest(retryDelay);
-        } else {
-          throw new Error('Rate limit exceeded. Max retries reached.');
+        if (result.errors) {
+          console.error(`GraphQL errors for tokenId ${tokenId}:`, JSON.stringify(result.errors, null, 2));
+          return { comments: [], pageInfo: { hasNextPage: false, endCursor: null } };
         }
-      }
 
-      if (!results.ok) {
-        const text = await results.text();
-        console.error(`HTTP error! status: ${results.status}, response: ${text}`);
-        throw new Error(`HTTP error! status: ${results.status}`);
-      }
+        const commentsData = result.data?.collectionOrToken?.comments;
+        console.log(`Comments data structure for tokenId ${tokenId}:`, commentsData);
 
-      const allData = await results.json();
-      console.log('API Response:', allData);
+        if (!commentsData || !commentsData.edges) {
+          console.warn(`No valid comments data for tokenId ${tokenId}`);
+          return { comments: [], pageInfo: { hasNextPage: false, endCursor: null } };
+        }
 
-      if (allData.errors) {
-        console.error('GraphQL Errors:', allData.errors);
-        throw new Error(allData.errors[0].message);
-      }
+        const edges = commentsData.edges || [];
+        console.log(`Edges for tokenId ${tokenId}:`, edges);
 
-      if (!allData.data || !allData.data.collectionOrToken) {
-        console.error('Unexpected API response structure:', allData);
-        throw new Error('Unexpected API response structure');
-      }
+        const comments = edges.map((edge: any) => {
+          const node = edge.node || {};
+          return {
+            comment: node.comment || '',
+            userAddress: node.userAddress || '',
+            handle: node.userProfile?.handle || '',
+            avatar: node.userProfile?.avatar?.downloadableUri
+              ? getIPFSUrl(node.userProfile.avatar.downloadableUri, IPFS_GATEWAY)
+              : null,
+          };
+        });
 
-      return allData;
-    } catch (error) {
-      console.error('Fetch error details:', error instanceof Error ? error.message : String(error));
-      if (retries > 0) {
-        console.log(`Error occurred. Retrying in ${delay}ms...`);
-        return executeRequest(delay * 2);
-      } else {
-        throw error;
+        console.log(`Processed comments for tokenId ${tokenId}:`, comments);
+
+        allComments = [...allComments, ...comments];
+        pageInfo = commentsData.pageInfo || { hasNextPage: false, endCursor: null };
+        currentAfter = pageInfo.endCursor;
+      } catch (error) {
+        console.error(`Error fetching comments for tokenId ${tokenId}:`, error);
+        return { comments: [], pageInfo: { hasNextPage: false, endCursor: null } };
       }
     }
+
+    return { comments: allComments, pageInfo };
   };
 
-  try {
-    const allData = await executeRequest(initialDelay);
-
-    const tokenData = allData.data.collectionOrToken;
-    if (!tokenData) throw new Error('No token data returned');
-
-    const metadata = {
-      content: {
-        mime: tokenData.media?.mimeType,
-        uri: tokenData.media?.originalUri || tokenData.mediaContent?.originalUri
-      },
-      image: tokenData.media?.downloadableUri || null,
-      name: tokenData.name || 'Unnamed Token'
-    };
-    const mediaType = determineMediaType(metadata.content?.mime || '');
-    const mediaURL = getIPFSUrl(metadata.content?.uri || '', IPFS_GATEWAY);
-    const imageURL = mediaType === 'audio' ? getIPFSUrl(metadata.image || '', IPFS_GATEWAY) : null;
-
-    const comments = tokenData.comments?.edges.map(edge => ({
-      fromAddress: edge.node.userAddress,
-      comment: edge.node.comment,
-      quantity: 1,
-      blockNumber: null,
-      blockTimestamp: null,
-      transactionHash: null,
-      username: edge.node.userProfile?.username || edge.node.userAddress,
-      avatar: edge.node.userProfile?.avatar?.originalUri ? getIPFSUrl(edge.node.userProfile.avatar.originalUri, IPFS_GATEWAY) : null
-    })) || [];
-
-    const token = {
-      tokenId: tokenData.tokenId,
-      mediaType,
-      mediaURL,
-      comments,
-      imageURL,
-      metadata,
-      originatorAddress: tokenData.creatorAddress || null,
-      toAddress: tokenData.creatorAddress || null
-    };
-
-    return {
-      tokens: [token],
-      pageInfo: tokenData.comments?.pageInfo || { endCursor: null, hasNextPage: false }
-    };
-  } catch (error) {
-    console.error('Final error in fetchTokenData:', error);
-    throw error;
+  for (const tokenId of tokenIds) {
+    const { comments, pageInfo } = await fetchCommentsForToken(tokenId);
+    tokens.push({ tokenId: tokenId.toString(), comments });
+    globalPageInfo = pageInfo;
   }
+
+  console.log(`Final tokens array from fetchComments:`, tokens);
+  return { tokens, pageInfo: globalPageInfo };
 };

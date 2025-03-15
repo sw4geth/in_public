@@ -9,18 +9,32 @@ import { config } from './wagmi';
 import lottie from "lottie-web";
 import loader from './loader.json';
 import TokenCard from './TokenCard';
-import { fetchTokenData } from './api';
+import { fetchComments } from './api';
+import { determineMediaType, getIPFSUrl } from './utils';
 import headerImage from './header.svg';
 
 const chains = [mainnet, polygon, optimism, arbitrum, base, zora, zoraSepolia];
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Utility to parse tokenId from the complex string format
-const parseTokenId = (tokenId: string): string => {
-  if (!tokenId) return '0';
-  const parts = tokenId.split('.');
-  return parts[parts.length - 1] || '0';
+// Utility to parse tokenId from BigInt to string
+const parseTokenId = (tokenId: bigint): string => {
+  return tokenId.toString();
+};
+
+// Fetch IPFS metadata from tokenURI
+const fetchIPFSMetadata = async (tokenURI: string, ipfsGateway: string) => {
+  try {
+    const ipfsUrl = getIPFSUrl(tokenURI, ipfsGateway);
+    const response = await fetch(ipfsUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch IPFS metadata from ${ipfsUrl}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching IPFS metadata for ${tokenURI}:`, error);
+    return null;
+  }
 };
 
 function App() {
@@ -45,12 +59,11 @@ function App() {
   const [mintQuantity, setMintQuantity] = useState(1);
   const [tokenIdBeingMinted, setTokenIdBeingMinted] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(true);
-  const [endCursor, setEndCursor] = useState(null);
-  const [requestCount, setRequestCount] = useState(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [tokenIds, setTokenIds] = useState<string[]>([]);
   const [currentTokenIndex, setCurrentTokenIndex] = useState(0);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [fetchedTokenIds, setFetchedTokenIds] = useState(new Set());
 
   const alertShownRef = useRef(false);
   const observerTarget = useRef(null);
@@ -65,104 +78,147 @@ function App() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const collectorClient = useMemo(() => {
-    console.log('Initializing collectorClient...');
-    console.log('chain:', chain);
-    console.log('publicClient:', publicClient);
     if (publicClient) {
       const chainIdToUse = chain?.id || CHAIN_ID;
-      console.log('Using chainId:', chainIdToUse);
       return createCollectorClient({ chainId: chainIdToUse, publicClient });
     }
     return null;
   }, [chain?.id, publicClient]);
 
   useEffect(() => {
-    const fetchTokenIds = async () => {
-      if (!collectorClient) {
-        console.log('Collector client not initialized');
-        return;
-      }
+    const fetchTokenData = async () => {
+      if (!collectorClient) return;
 
-      console.log('Starting to fetch token IDs with Zora SDK...');
       try {
         const tokenData = await collectorClient.getTokensOfContract({
           tokenContract: COLLECTION_ADDRESS,
           mintType: "1155"
         });
-        console.log('Raw token data from getTokensOfContract:', tokenData);
 
-        const discoveredTokenIds = new Set<string>();
-        if (tokenData && tokenData.tokens && Array.isArray(tokenData.tokens)) {
-          tokenData.tokens.forEach(token => {
-            if (token.token && token.token.tokenId) {
-              const tokenId = parseTokenId(token.token.tokenId.toString());
-              console.log(`Found tokenId: ${tokenId}`);
-              discoveredTokenIds.add(tokenId);
-            }
-          });
-        } else {
-          console.warn('Unexpected token data format:', tokenData);
+        if (!tokenData || !tokenData.tokens || !Array.isArray(tokenData.tokens)) {
+          throw new Error('Unexpected token data format');
         }
 
-        // Sort in descending order for reverse chronological order (last tokenId first)
-        const tokenIdArray = Array.from(discoveredTokenIds).sort((a, b) => Number(b) - Number(a));
-        console.log('Discovered token IDs:', tokenIdArray);
-        setTokenIds(tokenIdArray);
-        setHasNextPage(tokenIdArray.length > 0);
+        const tokenPromises = tokenData.tokens.map(async (tokenItem) => {
+          const token = tokenItem.token;
+          const tokenId = parseTokenId(token.tokenId);
+          const tokenURI = token.tokenURI;
+
+          const ipfsMetadata = await fetchIPFSMetadata(tokenURI, IPFS_GATEWAY);
+          if (!ipfsMetadata) return null;
+
+          const metadata = {
+            content: {
+              mime: ipfsMetadata.content?.mime || 'application/octet-stream',
+              uri: ipfsMetadata.content?.uri || tokenURI,
+            },
+            image: ipfsMetadata.image || null,
+            name: ipfsMetadata.name || 'Unnamed Token',
+          };
+
+          const mediaType = determineMediaType(metadata.content.mime);
+          const mediaURL = getIPFSUrl(metadata.content.uri, IPFS_GATEWAY);
+          const imageURL = mediaType === 'audio' ? getIPFSUrl(metadata.image, IPFS_GATEWAY) : null;
+
+          return {
+            tokenId,
+            mediaType,
+            mediaURL,
+            imageURL,
+            metadata,
+            originatorAddress: token.creator,
+            toAddress: token.creator,
+            comments: [],
+          };
+        });
+
+        const resolvedTokens = (await Promise.all(tokenPromises))
+          .filter(token => token !== null)
+          .sort((a, b) => Number(b.tokenId) - Number(a.tokenId));
+
+        setTokens(resolvedTokens);
+        setHasNextPage(resolvedTokens.length > BATCH_SIZE);
+        setInitialLoadComplete(true);
       } catch (err) {
-        console.error('Error fetching token IDs with Zora SDK getTokensOfContract:', err);
-        setError('Failed to fetch token IDs using Zora SDK.');
+        console.error('Error fetching token data with Zora SDK:', err);
+        setError('Failed to fetch token data using Zora SDK.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (collectorClient) {
-      fetchTokenIds();
-    }
+    if (collectorClient) fetchTokenData();
   }, [collectorClient]);
 
-  const loadMoreTokens = useCallback(async () => {
-    if (!hasNextPage || loading || isLoadingMore || currentTokenIndex >= tokenIds.length) return;
+  const fetchTokenComments = useCallback(async (tokenIdsToFetch) => {
+    if (!tokenIdsToFetch.length || commentsLoading) {
+      console.log('Skipping fetchTokenComments: No tokenIds to fetch or comments are loading');
+      return;
+    }
 
-    setIsLoadingMore(true);
-    setLoading(true);
+    console.log(`Fetching comments for tokenIds: ${tokenIdsToFetch.join(', ')}`);
+    setCommentsLoading(true);
+    const unfetchedTokenIds = tokenIdsToFetch.filter(tokenId => !fetchedTokenIds.has(tokenId));
+
+    if (unfetchedTokenIds.length === 0) {
+      console.log('All tokenIds already fetched for comments:', tokenIdsToFetch);
+      setCommentsLoading(false);
+      return;
+    }
+
     try {
-      console.log(`Making request ${requestCount + 1}. Timestamp: ${new Date().toISOString()}`);
-
-      let newTokens: any[] = [];
-      const endIndex = Math.min(currentTokenIndex + BATCH_SIZE, tokenIds.length);
-      for (let i = currentTokenIndex; i < endIndex; i++) {
-        const tokenId = tokenIds[i];
-        console.log(`Fetching token data for tokenId ${tokenId}...`);
-        try {
-          const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, CHAIN_ID, BATCH_SIZE, endCursor, tokenId);
-          console.log(`Token data for tokenId ${tokenId}:`, result);
-          newTokens.push(...result.tokens);
-        } catch (err) {
-          console.error(`Error fetching token data for tokenId ${tokenId}:`, err);
-          continue;
-        }
-      }
-      setCurrentTokenIndex(endIndex);
-
-      setRequestCount(prevCount => prevCount + 1);
-      console.log(`Request ${requestCount + 1} completed. Total requests: ${requestCount + 1}`);
+      const result = await fetchComments(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, CHAIN_ID, BATCH_SIZE, null, unfetchedTokenIds);
+      console.log(`Fetched comments result for tokenIds ${unfetchedTokenIds.join(', ')}:`, result);
+      console.log(`Result tokens array:`, result.tokens);
 
       setTokens(prevTokens => {
-        const updatedTokens = [...prevTokens, ...newTokens];
-        console.log('Updated tokens:', updatedTokens);
+        const updatedTokens = prevTokens.map(token => {
+          const matchingToken = result.tokens.find(t => t.tokenId.toString() === token.tokenId.toString());
+          const tokenComments = matchingToken ? matchingToken.comments : [];
+          console.log(`Updating tokenId ${token.tokenId} with comments:`, tokenComments);
+          return {
+            ...token,
+            comments: tokenComments,
+            _updateTimestamp: Date.now(),
+          };
+        });
+        console.log(`Updated tokens state:`, updatedTokens);
         return updatedTokens;
       });
-      setHasNextPage(endIndex < tokenIds.length);
 
-      await wait(DELAY_BETWEEN_BATCHES);
+      setFetchedTokenIds(prev => {
+        const newSet = new Set(prev);
+        unfetchedTokenIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
     } catch (error) {
-      console.error('Error loading more tokens:', error);
-      setError(error.message);
+      console.error('Error fetching comments:', error);
     } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
+      console.log('Setting commentsLoading to false');
+      setCommentsLoading(false);
     }
-  }, [hasNextPage, loading, isLoadingMore, endCursor, requestCount, tokenIds, currentTokenIndex]);
+  }, [commentsLoading, fetchedTokenIds]);
+
+  useEffect(() => {
+    if (!initialLoadComplete || tokens.length === 0) return;
+
+    const displayedTokenIds = tokens
+      .slice(0, currentTokenIndex + BATCH_SIZE)
+      .map(token => token.tokenId);
+    fetchTokenComments(displayedTokenIds);
+  }, [initialLoadComplete, currentTokenIndex, fetchTokenComments]);
+
+  const loadMoreTokens = useCallback(() => {
+    if (!hasNextPage || loading || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setCurrentTokenIndex(prev => {
+      const newIndex = prev + BATCH_SIZE;
+      return newIndex;
+    });
+    setHasNextPage(currentTokenIndex + BATCH_SIZE < tokens.length);
+    setIsLoadingMore(false);
+  }, [hasNextPage, loading, isLoadingMore, currentTokenIndex, tokens.length]);
 
   useEffect(() => {
     lottie.loadAnimation({
@@ -174,7 +230,6 @@ function App() {
   useEffect(() => {
     const renderEndTime = performance.now();
     const renderTime = renderEndTime - renderStartTime.current;
-    console.log(`Page render time: ${renderTime.toFixed(2)} milliseconds`);
   }, []);
 
   useEffect(() => {
@@ -199,61 +254,6 @@ function App() {
       }
     };
   }, [loadMoreTokens, loading, hasNextPage, initialLoadComplete, isLoadingMore]);
-
-  useEffect(() => {
-    const initialLoad = async () => {
-      if (initialLoadRef.current) return;
-      initialLoadRef.current = true;
-
-      const loadStartTime = performance.now();
-
-      setLoading(true);
-      setError(null);
-      try {
-        console.log('Token IDs available for initial load:', tokenIds);
-        if (tokenIds.length === 0) {
-          throw new Error('No token IDs available to fetch.');
-        }
-
-        console.log(`Making initial request. Timestamp: ${new Date().toISOString()}`);
-
-        let initialTokens: any[] = [];
-        const endIndex = Math.min(BATCH_SIZE, tokenIds.length);
-        for (let i = 0; i < endIndex; i++) {
-          const tokenId = tokenIds[i];
-          console.log(`Fetching initial token data for tokenId ${tokenId}...`);
-          try {
-            const result = await fetchTokenData(API_ENDPOINT, IPFS_GATEWAY, COLLECTION_ADDRESS, CHAIN_ID, BATCH_SIZE, null, tokenId);
-            console.log(`Initial token data for tokenId ${tokenId}:`, result);
-            initialTokens.push(...result.tokens);
-          } catch (err) {
-            console.error(`Error fetching initial token data for tokenId ${tokenId}:`, err);
-            continue;
-          }
-        }
-        setCurrentTokenIndex(endIndex);
-
-        setRequestCount(1);
-        console.log(`Initial request completed. Total requests: 1`);
-
-        setTokens(initialTokens);
-        setHasNextPage(endIndex < tokenIds.length);
-        setInitialLoadComplete(true);
-
-        const loadEndTime = performance.now();
-        console.log(`Initial data load time: ${(loadEndTime - loadStartTime).toFixed(2)} milliseconds`);
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-        setError(`Failed to load data. ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (tokenIds.length > 0) {
-      initialLoad();
-    }
-  }, [tokenIds]);
 
   useEffect(() => {
     if (hash) {
@@ -300,9 +300,7 @@ function App() {
     }
 
     return () => {
-      if (isSuccess) {
-        alertShownRef.current = false;
-      }
+      if (isSuccess) alertShownRef.current = false;
     };
   }, [isSuccess, hash, address, tokenIdBeingMinted, newComments, mintQuantity]);
 
@@ -317,12 +315,8 @@ function App() {
   }, [isWriteError]);
 
   const handleMint = async (tokenId) => {
-    if (!isConnected || !collectorClient) {
-      console.log("Wallet not connected or collectorClient not initialized");
-      return;
-    }
+    if (!isConnected || !collectorClient) return;
 
-    console.log('Starting minting process for token:', tokenId);
     setMinting(prev => ({ ...prev, [tokenId]: true }));
     setTokenIdBeingMinted(tokenId);
     setIsConfirming(false);
@@ -340,10 +334,9 @@ function App() {
         minterAccount: address,
         quantityToMint: BigInt(mintQuantity),
         mintComment: newComments[tokenId] || "",
-        mintReferral: "0xf32484112E0b6c994f5dB084D5C15F2a1d6a4228"
+        mintReferral: "0xf32484112e0b6c994f5db084d5c15f2a1d6a4228"
       });
 
-      console.log('Prepared mint parameters:', parameters);
       await writeContract(parameters);
     } catch (error) {
       console.error("Error in minting process:", error);
@@ -356,8 +349,7 @@ function App() {
   };
 
   useEffect(() => {
-    console.log('Tokens passed to TokenCard:', tokens);
-  }, [tokens]);
+  }, [tokens, currentTokenIndex]);
 
   if (loading && tokens.length === 0) return <div id="loader"></div>;
   if (error) return <div>Error: {error}. Please try refreshing the page.</div>;
@@ -374,7 +366,7 @@ function App() {
               <button>Shop</button>
             </a>
           </div>
-          {tokens.map(token => (
+          {tokens.slice(0, currentTokenIndex + BATCH_SIZE).map(token => (
             <TokenCard
               key={token.tokenId}
               token={token}
@@ -392,11 +384,15 @@ function App() {
               setSortOrder={setSortOrder}
               setNewComments={setNewComments}
               setMintQuantity={setMintQuantity}
+              IPFS_GATEWAY={IPFS_GATEWAY}
+              COLLECTION_ADDRESS={COLLECTION_ADDRESS}
+              commentsLoading={commentsLoading}
+              USE_USERNAMES={true}
             />
           ))}
           {hasNextPage && (
             <div ref={observerTarget} style={{ height: '20px', margin: '20px 0' }}>
-              {loading ? 'Loading more...' : 'Scroll to load more'}
+              {isLoadingMore ? 'Loading more...' : 'Scroll to load more'}
             </div>
           )}
         </div>

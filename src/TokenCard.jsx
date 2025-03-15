@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import MediaRenderer from './MediaRenderer';
 import CommentSection from './CommentSection';
-import { fetchUserProfiles } from './fetchUserProfile';
 import { getIPFSUrl } from './utils';
-
-// Function to decode Base64 tokenId to numeric value
-const decodeTokenId = (encodedId) => {
-  try {
-    // Decode Base64 to string, then parse the numeric part
-    const decoded = atob(encodedId);
-    const numericId = decoded.split('.').pop() || decoded; // Extract the last part (e.g., "36")
-    return numericId;
-  } catch (e) {
-    console.error('Error decoding tokenId:', e, encodedId);
-    return encodedId; // Fallback to original if decoding fails
-  }
-};
 
 const TokenCard = ({
   token,
   commentsVisible,
   commentInputVisible,
   sortOrder,
-  userProfiles,
   newComments,
   minting,
   isPending,
@@ -35,50 +20,23 @@ const TokenCard = ({
   setNewComments,
   setMintQuantity,
   USE_USERNAMES,
-  CORS_PROXY,
   COLLECTION_ADDRESS,
-  setUserProfiles,
-  IPFS_GATEWAY
+  IPFS_GATEWAY,
+  commentsLoading,
 }) => {
-  const [creatorProfile, setCreatorProfile] = useState(null);
-
-  useEffect(() => {
-    const getProfiles = async () => {
-      if (USE_USERNAMES && token.originatorAddress) {
-        const addresses = [token.originatorAddress];
-
-        try {
-          const profiles = await fetchUserProfiles(addresses, CORS_PROXY);
-          setCreatorProfile(profiles[token.originatorAddress]);
-          setUserProfiles(profiles);
-        } catch (error) {
-          console.error('Error fetching profiles:', error);
-        }
-      }
-    };
-
-    getProfiles();
-  }, [token.originatorAddress, newComments, USE_USERNAMES, CORS_PROXY, setUserProfiles]);
-
   const getTokenUrl = (tokenId) => {
-    const numericTokenId = decodeTokenId(tokenId);
-    return `https://zora.co/collect/base:${COLLECTION_ADDRESS}/${numericTokenId}`;
+    return `https://zora.co/collect/base:${COLLECTION_ADDRESS}/${tokenId}`;
   };
 
   const getZoraProfileUrl = (address) => {
     return `https://zora.co/${address}`;
   };
 
-  const avatarUrl = creatorProfile?.avatar ? getIPFSUrl(creatorProfile.avatar, IPFS_GATEWAY) : null;
-
   return (
     <div className="token-card">
       {USE_USERNAMES ? (
         <div className="token-title">
           <div className="creator-info">
-            {avatarUrl && (
-              <img src={avatarUrl} alt="Creator avatar" className="creator-avatar" />
-            )}
             <span>
               <a
                 href={getZoraProfileUrl(token.originatorAddress)}
@@ -86,7 +44,7 @@ const TokenCard = ({
                 rel="noopener noreferrer"
                 className="info-link"
               >
-                {creatorProfile?.username || token.originatorAddress || 'Unknown Creator'}
+                {token.originatorAddress || 'Unknown Creator'}
               </a>{' '}
               posted
             </span>
@@ -118,7 +76,7 @@ const TokenCard = ({
             rel="noopener noreferrer"
             className="info-link"
           >
-            {decodeTokenId(token.tokenId)}
+            {token.tokenId}
           </a>
         </div>
       </div>
@@ -126,6 +84,7 @@ const TokenCard = ({
 
       <CommentSection
         token={token}
+        commentsVisible={commentsVisible}
         commentInputVisible={commentInputVisible}
         sortOrder={sortOrder}
         newComments={newComments}
@@ -139,6 +98,7 @@ const TokenCard = ({
         setNewComments={setNewComments}
         setMintQuantity={setMintQuantity}
         IPFS_GATEWAY={IPFS_GATEWAY}
+        loadingComments={commentsLoading}
       />
     </div>
   );
