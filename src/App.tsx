@@ -9,7 +9,7 @@ import { config } from './wagmi';
 import lottie from "lottie-web";
 import loader from './loader.json';
 import TokenCard from './TokenCard';
-import { fetchComments } from './api';
+import { fetchComments, getApiEndpoint } from './api';
 import { determineMediaType, getIPFSUrl } from './utils';
 import headerImage from './header.svg';
 
@@ -41,7 +41,7 @@ function App() {
   const COLLECTION_ADDRESS = "0x3f209430017e4fa79fecf663faff8584c0feac78";
   const CHAIN_ID = 8453; // Base
   const EXPECTED_CHAIN_ID = base.id;
-  const API_ENDPOINT = "https://api.zora.co/universal/graphql";
+  const API_ENDPOINT = getApiEndpoint();
   const IPFS_GATEWAY = "https://magic.decentralized-content.com/ipfs/";
   const BATCH_SIZE = 10;
   const DELAY_BETWEEN_BATCHES = 5000;

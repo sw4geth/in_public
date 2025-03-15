@@ -24,7 +24,7 @@ const DEFAULT_AVATAR_TEMPLATE = `
 </svg>
 `;
 
-const generateColor = (address) => {
+const generateColor = (address: string): number => {
   let hash = 0;
   for (let i = 0; i < address.length; i++) {
     const char = address.charCodeAt(i);
@@ -34,16 +34,45 @@ const generateColor = (address) => {
   return Math.abs(hash) % 360; // Use the hash to generate a hue value between 0 and 359
 };
 
-const createDefaultAvatar = (address) => {
+const createDefaultAvatar = (address: string): string => {
   const hue = generateColor(address);
   const svgString = DEFAULT_AVATAR_TEMPLATE
     .replace(/{ADDRESS}/g, address.slice(2, 10))
-    .replace(/{HUE}/g, hue)
+    .replace(/{HUE}/g, hue.toString())
     .trim();
   // Encode the SVG string as a data URI
   const encodedSvg = encodeURIComponent(svgString);
   return `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
 };
+
+interface Comment {
+  id: number;
+  comment: string;
+  userAddress: string;
+  handle?: string;
+  avatar?: string;
+  truncatedComment?: string;
+  needsTruncation?: boolean;
+}
+
+interface CommentSectionProps {
+  token: any;
+  commentsVisible: boolean;
+  commentInputVisible: boolean;
+  sortOrder: string;
+  newComments: Record<string, string>;
+  minting: Record<string, boolean>;
+  isPending: boolean;
+  isConfirming: boolean;
+  handleMint: (tokenId: string) => void;
+  mintQuantity: number;
+  setCommentInputVisible: (visible: boolean) => void;
+  setSortOrder: (order: string) => void;
+  setNewComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setMintQuantity: (quantity: number) => void;
+  IPFS_GATEWAY: string;
+  loadingComments?: boolean;
+}
 
 const CommentSection = ({
   token,
@@ -62,24 +91,24 @@ const CommentSection = ({
   setMintQuantity,
   IPFS_GATEWAY,
   loadingComments = false,
-}) => {
-  const [processedComments, setProcessedComments] = useState([]);
-  const [expandedComments, setExpandedComments] = useState({});
-  const [visibleComments, setVisibleComments] = useState(2);
+}: CommentSectionProps) => {
+  const [processedComments, setProcessedComments] = useState<Comment[]>([]);
+  const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({});
+  const [visibleComments, setVisibleComments] = useState(10);
 
   useEffect(() => {
     const container = document.querySelector(`#comment-loader-${token.tokenId}`);
     if (container) {
       lottie.loadAnimation({
-        container,
+        container: container as Element,
         animationData: loader,
         loop: true,
         autoplay: true,
       });
     }
-  }, [token.tokenId]);
+  }, [token.tokenId, loadingComments]);
 
-  const sortComments = useCallback((comments) => {
+  const sortComments = useCallback((comments: any[]) => {
     return [...comments].sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
@@ -113,9 +142,9 @@ const CommentSection = ({
       avatar: comment.avatar || createDefaultAvatar(comment.userAddress || 'default'),
     }));
     setProcessedComments(processed);
-  }, [token.comments, sortOrder]);
+  }, [token.comments, sortComments]);
 
-  const toggleCommentExpansion = (commentId) => {
+  const toggleCommentExpansion = (commentId: number) => {
     setExpandedComments((prev) => ({
       ...prev,
       [commentId]: !prev[commentId],
@@ -127,13 +156,12 @@ const CommentSection = ({
   };
 
   const toggleCommentsVisibility = () => {
-    setCommentsVisible((prev) => !prev);
-    if (!commentsVisible) {
-      setVisibleComments(2);
+    if (typeof setCommentInputVisible === 'function') {
+      setCommentInputVisible(!commentInputVisible);
     }
   };
 
-  const truncateUsername = (handle, maxLength = 20) => {
+  const truncateUsername = (handle: string, maxLength = 20) => {
     if (handle.length <= maxLength) return handle;
     return `${handle.slice(0, maxLength - 3)}...`;
   };

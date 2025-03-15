@@ -1,10 +1,17 @@
 import { getIPFSUrl } from './utils';
 
-// Determine the API endpoint based on the hostname
-const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-const ZORA_API_ENDPOINT = isLocalhost
-  ? 'https://api.zora.co/universal/graphql'
-  : '/api/zora-proxy';
+// Determine the API endpoint based on the environment
+export const getApiEndpoint = () => {
+  // Check if we're running in a browser environment
+  if (typeof window !== 'undefined') {
+    // In browser: use relative path in production, direct URL in development
+    return window.location.hostname === 'localhost' 
+      ? 'https://api.zora.co/universal/graphql'
+      : '/api/zora-proxy';
+  }
+  // In SSR or non-browser environment, default to direct API
+  return 'https://api.zora.co/universal/graphql';
+};
 
 export const fetchComments = async (
   API_ENDPOINT: string,
@@ -17,6 +24,10 @@ export const fetchComments = async (
 ) => {
   const tokens: Array<{ tokenId: string; comments: any[] }> = [];
   let globalPageInfo = { hasNextPage: false, endCursor: null };
+  
+  // Use the provided API_ENDPOINT or fall back to our determined endpoint
+  const endpoint = API_ENDPOINT || getApiEndpoint();
+  console.log(`Using API endpoint: ${endpoint}`);
 
   const fetchCommentsForToken = async (tokenId: string) => {
     let allComments: any[] = [];
@@ -64,7 +75,8 @@ export const fetchComments = async (
       };
 
       try {
-        const response = await fetch(API_ENDPOINT || ZORA_API_ENDPOINT, {
+        console.log(`Fetching comments for tokenId ${tokenId} from ${endpoint}`);
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -72,16 +84,20 @@ export const fetchComments = async (
           body: JSON.stringify({ query, variables }),
         });
 
+        if (!response.ok) {
+          console.error(`HTTP error ${response.status} for tokenId ${tokenId}`);
+          return { comments: [], pageInfo: { hasNextPage: false, endCursor: null } };
+        }
+
         const result = await response.json();
-        console.log(`Full API Response for tokenId ${tokenId}:`, JSON.stringify(result, null, 2));
+        console.log(`API Response status for tokenId ${tokenId}:`, response.status);
 
         if (result.errors) {
-          console.error(`GraphQL errors for tokenId ${tokenId}:`, JSON.stringify(result.errors, null, 2));
+          console.error(`GraphQL errors for tokenId ${tokenId}:`, result.errors);
           return { comments: [], pageInfo: { hasNextPage: false, endCursor: null } };
         }
 
         const commentsData = result.data?.collectionOrToken?.comments;
-        console.log(`Comments data structure for tokenId ${tokenId}:`, commentsData);
 
         if (!commentsData || !commentsData.edges) {
           console.warn(`No valid comments data for tokenId ${tokenId}`);
@@ -89,8 +105,6 @@ export const fetchComments = async (
         }
 
         const edges = commentsData.edges || [];
-        console.log(`Edges for tokenId ${tokenId}:`, edges);
-
         const comments = edges.map((edge: any) => {
           const node = edge.node || {};
           return {
@@ -102,8 +116,6 @@ export const fetchComments = async (
               : null,
           };
         });
-
-        console.log(`Processed comments for tokenId ${tokenId}:`, comments);
 
         allComments = [...allComments, ...comments];
         pageInfo = commentsData.pageInfo || { hasNextPage: false, endCursor: null };
@@ -123,6 +135,5 @@ export const fetchComments = async (
     globalPageInfo = pageInfo;
   }
 
-  console.log(`Final tokens array from fetchComments:`, tokens);
   return { tokens, pageInfo: globalPageInfo };
 };
