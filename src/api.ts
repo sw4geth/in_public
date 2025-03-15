@@ -1,5 +1,11 @@
 import { getIPFSUrl } from './utils';
 
+// Determine the API endpoint based on the hostname
+const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const ZORA_API_ENDPOINT = isLocalhost
+  ? 'https://api.zora.co/universal/graphql'
+  : '/api/zora-proxy';
+
 export const fetchComments = async (
   API_ENDPOINT: string,
   IPFS_GATEWAY: string,
@@ -58,7 +64,7 @@ export const fetchComments = async (
       };
 
       try {
-        const response = await fetch(API_ENDPOINT, {
+        const response = await fetch(API_ENDPOINT || ZORA_API_ENDPOINT, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
