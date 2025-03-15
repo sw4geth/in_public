@@ -77,13 +77,12 @@ function App() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Use a stable CHAIN_ID for collectorClient, not chain?.id
   const collectorClient = useMemo(() => {
     if (publicClient) {
       return createCollectorClient({ chainId: CHAIN_ID, publicClient });
     }
     return null;
-  }, [publicClient]); // Only recreate if publicClient changes
+  }, [publicClient]);
 
   useEffect(() => {
     const fetchTokenData = async () => {
@@ -147,9 +146,8 @@ function App() {
       }
     };
 
-    // Run only on mount, not on chain or connection changes
     fetchTokenData();
-  }, [collectorClient]); // Empty dependency array to run once
+  }, [collectorClient]);
 
   const fetchTokenComments = useCallback(async (tokenIdsToFetch) => {
     if (!tokenIdsToFetch.length || commentsLoading) {
@@ -275,22 +273,19 @@ function App() {
     if (isSuccess && hash && !alertShownRef.current) {
       alert(`Comment minted successfully!`);
       alertShownRef.current = true;
-      setTokens(prevTokens =>
-        prevTokens.map(token => {
-          if (token.tokenId === tokenIdBeingMinted) {
-            const newCommentsList = [{
-              fromAddress: address,
-              comment: newComments[token.tokenId],
-              blockNumber: Date.now()
-            }];
-            return {
-              ...token,
-              comments: [...token.comments, ...newCommentsList]
-            };
-          }
-          return token;
-        })
-      );
+
+      // Refetch comments for the minted token
+      if (tokenIdBeingMinted) {
+        // Reset fetchedTokenIds for this token to force a refetch
+        setFetchedTokenIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tokenIdBeingMinted);
+          return newSet;
+        });
+        fetchTokenComments([tokenIdBeingMinted]);
+      }
+
+      // Clear the comment input and reset minting state
       setNewComments(prev => ({ ...prev, [tokenIdBeingMinted]: "" }));
       setMinting(prev => ({ ...prev, [tokenIdBeingMinted]: false }));
       setTokenIdBeingMinted(null);
@@ -301,7 +296,7 @@ function App() {
     return () => {
       if (isSuccess) alertShownRef.current = false;
     };
-  }, [isSuccess, hash, address, tokenIdBeingMinted, newComments, mintQuantity]);
+  }, [isSuccess, hash, tokenIdBeingMinted, fetchTokenComments]);
 
   useEffect(() => {
     if (isWriteError) {
